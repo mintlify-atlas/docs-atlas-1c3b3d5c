@@ -1,5 +1,5 @@
 ---
-title: "Deploying Setup Gulp Assets to a Shopify Theme"
+title: "Deploy and Integrate Setup Gulp Assets with Shopify"
 sidebarTitle: "Shopify Integration"
 description: "Connect Setup Gulp's compiled assets/ output to a Shopify theme by pointing gulp's dest path at your theme directory and using Shopify CLI for live sync."
 ---
@@ -15,6 +15,7 @@ Each output file follows a naming pattern that signals its role in the theme. Th
 | `app.min.css` | `./src/scss/*.scss` | Global stylesheet, linked in `theme.liquid` |
 | `component-*.min.css` | `./src/scss/components/*.scss` | Component-scoped styles, linked conditionally per template |
 | `section-*.min.css` | `./src/scss/sections/*.scss` | Section-scoped styles, rendered inline or linked per section |
+| `*.min.js` | `./src/js/*.ts` | Root-level scripts, loaded globally (e.g. in `theme.liquid`) |
 | `component-*.min.js` | `./src/js/components/*.ts` | Reusable component scripts, loaded with `script_tag` or `<script defer>` |
 | `section-*.min.js` | `./src/js/sections/*.ts` | Section-specific scripts, loaded only on templates that use that section |
 

@@ -1,5 +1,5 @@
 ---
-title: "SCSS Mixin Library Reference"
+title: "SCSS Mixin Library: Cross-Browser Utilities Reference"
 sidebarTitle: "Mixins"
 description: "Full reference for every SCSS mixin in _mixins.scss — flexbox, typography, layout, transitions, borders, gradients, and more with usage examples."
 ---
@@ -67,13 +67,16 @@ Sets `opacity` with an Internet Explorer 8 `filter: alpha(opacity=…)` fallback
 @include heading($size);
 ```
 
-Generates `h1`–`h6` selectors with decreasing font sizes. Each heading level is 0.2 em smaller than the previous, starting from `$size`.
+Generates `h1`–`h6` selectors with decreasing font sizes. Each heading level steps down by `0.2` from the previous, starting from `$size`.
 
 ```scss
-.article {
-  @include heading(2em);
-  // → h1 { font-size: 2em }  h2 { font-size: 1.8em }  … h6 { font-size: 1em }
-}
+@include mixins.heading(2em);
+// → h1 { font-size: 2em }
+// → h2 { font-size: 1.8em }
+// → h3 { font-size: 1.6em }
+// → h4 { font-size: 1.4em }
+// → h5 { font-size: 1.2em }
+// → h6 { font-size: 1em }
 ```
 
 ---
@@ -262,7 +265,7 @@ A shorthand for setting `background-image`, `background-position`, and `backgrou
 @include retina($image, $width, $height);
 ```
 
-Wraps the high-DPI image swap in a `min-device-pixel-ratio: 2` / `-webkit-min-device-pixel-ratio: 2` media query.
+Wraps the high-DPI image swap in a `min-device-pixel-ratio: 1.3` media query targeting Retina and HiDPI displays.
 
 ```scss
 .logo {
@@ -276,7 +279,7 @@ Wraps the high-DPI image swap in a `min-device-pixel-ratio: 2` / `-webkit-min-de
 @include backface-visibility($visibility: hidden);
 ```
 
-Emits `-webkit-backface-visibility` and `backface-visibility`, useful when applying 3D transforms to prevent flickering.
+Emits `-webkit-backface-visibility`, `-moz-backface-visibility`, `-ms-backface-visibility`, `-o-backface-visibility`, and `backface-visibility`, useful when applying 3D transforms to prevent flickering.
 
 ```scss
 .flip-card {
@@ -294,7 +297,7 @@ Emits `-webkit-backface-visibility` and `backface-visibility`, useful when apply
 @include transform($transformation);
 ```
 
-Emits `-webkit-transform`, `-ms-transform`, and `transform`.
+Emits `-webkit-transform`, `-moz-transform`, `-ms-transform`, `-o-transform`, and `transform`.
 
 ```scss
 .icon {
@@ -308,7 +311,7 @@ Emits `-webkit-transform`, `-ms-transform`, and `transform`.
 @include transform-style($style);
 ```
 
-Emits `-webkit-transform-style` and `transform-style`. Typically used with `preserve-3d`.
+Emits `-webkit-transform-style`, `-moz-transform-style`, `-o-transform-style`, `-ms-transform-style`, and `transform-style`. Typically used with `preserve-3d`.
 
 ```scss
 .scene {
@@ -322,7 +325,7 @@ Emits `-webkit-transform-style` and `transform-style`. Typically used with `pres
 @include transition($property: all, $duration: 0.5s, $ease: linear);
 ```
 
-Emits `-webkit-transition` and `transition`.
+Emits `-webkit-transition`, `-moz-transition`, `-o-transition`, and `transition`.
 
 ```scss
 .button {
@@ -338,7 +341,7 @@ Emits `-webkit-transition` and `transition`.
 }
 ```
 
-Wraps the animation block in both a `@-webkit-keyframes` and `@keyframes` at-rule.
+Wraps the animation block in `@-webkit-keyframes`, `@-moz-keyframes`, `@-ms-keyframes`, and `@keyframes` at-rules.
 
 ```scss
 @include mixins.keyframes(slide-in) {
@@ -373,7 +376,7 @@ Emits the full vendor-prefixed stack: `-webkit-user-select`, `-moz-user-select`,
 }
 ```
 
-Generates `::-webkit-input-placeholder`, `:-moz-placeholder`, `::-moz-placeholder`, `:-ms-input-placeholder`, and `::placeholder` selectors in one go.
+Generates `::-webkit-input-placeholder`, `::-moz-placeholder`, `:-ms-input-placeholder`, and `::placeholder` selectors in one go.
 
 ```scss
 .search-input {
@@ -394,7 +397,7 @@ Generates `::-webkit-input-placeholder`, `:-moz-placeholder`, `::-moz-placeholde
 @include background($color);
 ```
 
-Dynamically generates a `.bg-{hex}` utility class for the given color, stripping the `#` from the hex value to form a valid class name. Uses `to-string()` and `str-replace()` from `_functions.scss` internally.
+Dynamically generates a `.bg-{hex}` utility class for the given color, stripping the `#` from the hex value to form a valid class name. Uses `to-string()` from `_functions.scss` and `str-slice()` internally.
 
 ```scss
 @include mixins.background(#3b82f6);

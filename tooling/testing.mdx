@@ -1,5 +1,5 @@
 ---
-title: "Testing with Vitest and jsdom"
+title: "Setup Gulp Unit Testing: Vitest, jsdom, and Coverage"
 sidebarTitle: "Testing"
 description: "Run unit tests in Setup Gulp using Vitest with jsdom environment, coverage via v8, and the optional Vitest UI for interactive test exploration."
 ---
@@ -15,7 +15,7 @@ Test files live in the `__tests__/` directory at the project root and follow the
 ```bash
 yarn test          # vitest (interactive watch mode)
 yarn test:ui       # vitest --ui (browser-based interactive UI)
-yarn coverage      # vitest run --coverage (single run with coverage report)
+yarn coverage      # vitest run --coverage --exclude ./gulpfile.js
 ```
 
 ## Vitest configuration

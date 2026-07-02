@@ -1,5 +1,5 @@
 ---
-title: "CSS Custom Property Color System"
+title: "CSS Custom Property Color Tokens and Opacity Variants"
 sidebarTitle: "Colors"
 description: "The color system defined in _colors.scss — named CSS custom properties for base colors and opacity variants from 90% down to 1.25%."
 ---
@@ -36,7 +36,7 @@ Every base color is defined as a CSS custom property. The hex values below are t
 
 ## Opacity variants
 
-Every color in the palette (excluding `--white`, `--near-white`, and `--transparent`) ships with a full set of pre-computed opacity variants. They follow the naming pattern:
+Eight colors ship with a full set of pre-computed opacity variants: `--black`, `--gray`, `--red`, `--orange`, `--yellow`, `--purple`, `--green`, and `--blue`. The grayscale neutrals (`--near-black` through `--light-gray`, `--near-white`, `--white`) and `--transparent` are available as base tokens only. The opacity variants follow the naming pattern:
 
 ```
 --{color}-{opacity}
@@ -86,7 +86,7 @@ Rather than storing hex strings directly, `_colors.scss` uses the `hex-to-rgb()`
 ```scss
 // _colors.scss (source pattern)
 :root {
-  --purple: #{functions.hex-to-rgb(#a855f7)};  // stored as "168, 85, 247"
+  --purple: #{hex-to-rgb(#a855f7)};  // stored as "168, 85, 247"
   --purple-90: rgba(var(--purple), 0.9);
   --purple-80: rgba(var(--purple), 0.8);
   // … down to --purple-0125
@@ -104,7 +104,7 @@ Rather than storing hex strings directly, `_colors.scss` uses the `hex-to-rgb()`
 ```
 
 <Note>
-Because `--purple` stores bare channel values (`168, 85, 247`), you **cannot** use it directly in a CSS `color` or `background` property without wrapping it: `color: var(--purple)` will not work. Always use either the base hex (e.g. `#a855f7`) or an opacity variant (e.g. `var(--purple-90)`). For full opacity, use `--purple-90` or the `rgba()` wrapper directly.
+Because `--purple` stores bare channel values (`168, 85, 247`), you **cannot** use it directly in a CSS `color` or `background` property without wrapping it: `color: var(--purple)` will not work. Always use either the base hex (e.g. `#a855f7`) or an opacity variant (e.g. `var(--purple-90)`). For full opacity, use `var(--purple-90)` or the `rgba()` wrapper directly.
 </Note>
 
 ---

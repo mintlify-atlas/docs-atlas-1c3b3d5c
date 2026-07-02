@@ -11,10 +11,10 @@ Setup Gulp structures its styles as a set of focused SCSS partials that are comp
 | File | Role |
 |------|------|
 | `_colors.scss` | Defines every design token as a CSS custom property (e.g. `--gray-60`). Includes base hex colors and pre-computed `rgba()` opacity variants from 90 % down to 1.25 %. |
-| `_fonts.scss` | Declares `@font-face` rules and exports named Sass variables for each font stack (e.g. `$roboto-black`). |
+| `_fonts.scss` | Declares a direct `@font-face` block for Roboto and exports `$roboto-black` as a named Sass variable for the font stack. |
 | `_functions.scss` | Three pure Sass utility functions: `hex-to-rgb()`, `str-replace()`, and `to-string()`. These support the color system and dynamic class generation in the mixin library. |
 | `_mixins.scss` | A comprehensive cross-browser mixin library covering flexbox, typography, layout, visual effects, transforms, animations, and user-interaction utilities. |
-| `_variables.scss` | Project-level Sass variables shared across partials (breakpoints, spacing scale, z-index map, etc.). |
+| `_variables.scss` | Reserved for project-level Sass variables. The file is present but currently empty — add breakpoints, spacing scales, or z-index maps here as the project grows. |
 | `app.scss` | The main entry file. Imports every partial with `@use` and pulls in the Bourbon utility library with `@import`. |
 | `components/` | Component-scoped SCSS files, for example `loading-spinner.scss`. Each file styles one discrete UI component. |
 | `sections/` | Page-section SCSS files that correspond to Shopify theme sections. |
@@ -108,13 +108,13 @@ The `components/loading-spinner.scss` file demonstrates the component pattern. I
 ## Further reading
 
 <CardGroup cols={3}>
-  <Card title="Mixins" icon="wand-magic-sparkles" href="/scss/mixins">
+  <Card title="Mixins" icon="wand-magic-sparkles" href="scss/mixins">
     Full reference for every mixin in `_mixins.scss`
   </Card>
-  <Card title="Colors" icon="palette" href="/scss/colors">
+  <Card title="Colors" icon="palette" href="scss/colors">
     CSS custom property color tokens and opacity variants
   </Card>
-  <Card title="Functions" icon="function" href="/scss/functions">
+  <Card title="Functions" icon="function" href="scss/functions">
     `hex-to-rgb`, `str-replace`, and `to-string` utility functions
   </Card>
 </CardGroup>

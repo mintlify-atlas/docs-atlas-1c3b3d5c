@@ -1,10 +1,10 @@
 ---
-title: "SCSS Utility Functions Reference"
+title: "SCSS Utility Functions: hex-to-rgb, str-replace, to-string"
 sidebarTitle: "Functions"
-description: "The three Sass utility functions in _functions.scss: hex-to-rgb for color conversion, str-replace for string manipulation, and to-string for value inspection."
+description: "The three Sass utility functions in _functions.scss: hex-to-rgb for color conversion, str-replace for string manipulation, and to-string for inspection."
 ---
 
-`_functions.scss` provides three pure Sass utility functions that are used throughout the mixin library and color system. They handle the low-level work of color decomposition and string manipulation so the higher-level files (`_colors.scss`, `_mixins.scss`) stay readable. The file is loaded into `_mixins.scss` with `@use './functions'` at the top of that partial.
+`_functions.scss` provides three pure Sass utility functions that are used throughout the mixin library and color system. They handle the low-level work of color decomposition and string manipulation so the higher-level files (`_colors.scss`, `_mixins.scss`) stay readable. The file is loaded into `_mixins.scss` with `@use './functions'` at the top of that partial, and into `_colors.scss` with `@import './functions'`.
 
 ---
 
@@ -71,17 +71,6 @@ $color-without-hash: str-replace($color, '#');
 ```
 
 ```scss
-// This is how the background() mixin builds utility class names:
-@mixin background($color) {
-  $color_without_hash: str-slice(to-string($color), 2);
-  .bg-#{$color_without_hash} {
-    background: #{$color};
-  }
-}
-// @include background(#3b82f6); → .bg-3b82f6 { background: #3b82f6; }
-```
-
-```scss
 // Substitute one substring for another
 $path: 'fonts/my-font.eot?#iefix';
 $cleaned: str-replace($path, '?#iefix', '');
@@ -133,7 +122,7 @@ $str: to-string($list);
 ```
 
 <Note>
-`to-string()` is used internally by `str-replace()` to convert a Sass color value (which Sass stores as a typed color object) into a plain string before performing substring operations. Without this step, `str-replace()` would receive a color object rather than the `"#rrggbb"` string it needs to strip the `#` from.
+`to-string()` is used by the `background()` mixin to convert a Sass color value (which Sass stores as a typed color object) into a plain string before `str-slice()` strips the leading `#` to build a valid CSS class name. Without this step, the mixin would receive a color object rather than the `"#rrggbb"` string it needs.
 </Note>
 
 **Implementation**

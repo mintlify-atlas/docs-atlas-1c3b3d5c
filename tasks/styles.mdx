@@ -1,5 +1,5 @@
 ---
-title: "SCSS Compilation and CSS Minification Tasks"
+title: "Styles Tasks: SCSS Compilation and CSS Minification"
 sidebarTitle: "Styles"
 description: "How Setup Gulp compiles SCSS with Bourbon and autoprefixer, merges normalize.css, and minifies the output CSS into the assets directory."
 ---
@@ -10,7 +10,11 @@ Setup Gulp uses a two-stage approach to stylesheet processing. SCSS source files
 
 ## `sass` Task
 
-The `sass` task handles root-level SCSS files at `./src/scss/*.scss`. Before compiling, it uses `merge-stream` to prepend `normalize.css` from `node_modules/` to the stream, so every build starts from a consistent CSS baseline. The merged stream is concatenated into `styles.css`, then compiled through `compileSass`.
+The `sass` task handles root-level SCSS files at `./src/scss/*.scss`. Before compiling, it uses `merge-stream` to combine `normalize.css` from `node_modules/` with the SCSS source stream, and `gulp-concat` to concatenate them into a single `styles.css` in the pipeline. The result is then passed to `compileSass`.
+
+<Note>
+  The `compileSass` helper opens a fresh `gulp.src(srcPath)` stream internally, so it re-reads from `paths.sass` directly rather than receiving the concatenated stream as input. In practice this means the `normalize.css` merge and `concat` steps in the `sass` task do not flow through to the Sass compiler — only the SCSS files at `./src/scss/*.scss` are compiled. This is a known quirk of the current gulpfile implementation.
+</Note>
 
 **Source glob:** `./src/scss/*.scss`
 

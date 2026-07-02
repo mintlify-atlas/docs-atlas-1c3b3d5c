@@ -68,6 +68,92 @@ browserSync.init({
 
 This tells BrowserSync to forward all requests to the existing server while still injecting its live-reload script, giving you hot CSS updates on top of whatever server is already running.
 
+## The `watch` task
+
+The `watch` task registers a file watcher for every source glob in `paths`. Each watcher wraps its corresponding task in `gulp.series` so file events are processed sequentially — this prevents race conditions when a rapid sequence of saves would otherwise queue overlapping compilations.
+
+```js gulpfile.js
+gulp.task('watch', () => {
+  gulp.watch(paths.font, gulp.series('fonts'))
+  gulp.watch(paths.img, gulp.series('images'))
+  gulp.watch(paths.jsComponents, gulp.series('jsComponents'))
+  gulp.watch(paths.jsSections, gulp.series('jsSections'))
+  gulp.watch(paths.js, gulp.series('js'))
+  gulp.watch(paths.sassComponents, gulp.series('sassComponents'))
+  gulp.watch(paths.sassSections, gulp.series('sassSections'))
+  gulp.watch(paths.sass, gulp.series('sass'))
+  gulp.watch(paths.css, gulp.series('minifyCss'))
+  browserSync.stream()
+})
+```
+
+Notice that font and image watchers also use `gulp.series` — the same pattern as every other watcher — because the copy and optimisation operations are fast enough that sequential processing is fine and avoids partial writes to `paths.dest`.
+
+Run the watcher with:
+
+```bash
+yarn start
+```
+
+## The `build` task
+
+The `build` task runs all ten compilation and optimisation tasks in parallel using `gulp.parallel`. Running them concurrently cuts total build time significantly compared to a sequential run.
+
+```js gulpfile.js
+gulp.task(
+  'build',
+  gulp.parallel(
+    'cleanAssets',
+    'fonts',
+    'images',
+    'jsComponents',
+    'jsSections',
+    'js',
+    'sassComponents',
+    'sassSections',
+    'sass',
+    'minifyCss'
+  )
+)
+```
+
+`cleanAssets` is included in the parallel group rather than run before the others. This means cleaning and compilation start at the same time. If you need to guarantee the output directory is fully empty before any new file is written — for example, to avoid stale files surviving a rename — swap `gulp.parallel` for a `gulp.series('cleanAssets', gulp.parallel(...))` pattern.
+
+Run a full build with:
+
+```bash
+yarn build
+```
+
+## Error handling
+
+The `handleErrors` function is passed as the `errorHandler` option to `plumber` in every task. When a task fails, it fires a desktop notification and beeps the system speaker before exiting.
+
+```js gulpfile.js
+function handleErrors() {
+  const args = Array.prototype.slice.call(arguments)
+
+  notify
+    .onError({
+      title: 'Task Failed [<%= error.message %>',
+      message: 'See console.',
+    })
+    .apply(this, args)
+
+  gutil.beep()
+
+  process.exit(1)
+}
+```
+
+`notify.onError` is provided by `gulp-notify` and triggers an OS-level notification (macOS Notification Centre, Linux `notify-send`, etc.) with the error message interpolated into the title string.
+
+`gutil.beep()` comes from `gulp-util`, which is a deprecated package that has not been maintained since 2018. It still works at runtime because no replacement for `beep()` has been widely adopted, but you can safely remove the `gutil.beep()` call and the `gulp-util` import if desktop audio feedback is not needed.
+
+<Warning>
+  `gulp-util` is deprecated. All of its utilities except `beep()` have direct replacements in the Gulp ecosystem — `fancy-log` for logging, `plugin-error` for error construction, and so on. If you upgrade or audit dependencies, replace `gulp-util` imports with their individual successors and remove the `gutil.beep()` call.
+</Warning>
+
 ## Image optimisation settings
 
 The `images` task pipes every matched file through `gulp-imagemin` with per-format plugins. Each plugin exposes options you can tune to balance file size against processing time and visual quality.
@@ -77,9 +163,9 @@ gulp.task('images', () =>
   gulp.src(paths.img)
     .pipe(plumber({ errorHandler: handleErrors }))
     .pipe(imagemin([
+      gifsicle({ interlaced: true }),
       mozjpeg({ quality: 75, progressive: true }),
       optipng({ optimizationLevel: 5 }),
-      gifsicle({ interlaced: true }),
       svgo({
         plugins: [
           { name: 'removeViewBox', active: true },

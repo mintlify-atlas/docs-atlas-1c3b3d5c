@@ -80,6 +80,9 @@ The configuration lives directly in `package.json`:
 ```json
 "husky": {
   "hooks": {
+    "applypatch-msg": "echo \"[Husky] applypatch-msg\"",
+    "pre-applypatch": "echo \"[Husky] pre-applypatch\"",
+    "post-applypatch": "echo \"[Husky] post-applypatch\"",
     "pre-commit": "lint-staged"
   }
 },
@@ -88,7 +91,7 @@ The configuration lives directly in `package.json`:
 }
 ```
 
-When you stage one or more `.scss` files, lint-staged runs `stylelint --fix` on them and re-stages the fixed output before the commit is finalised. TypeScript files are covered by the `precommit` script (`yarn run lint`), which you can invoke manually or wire into a separate lint-staged entry.
+When you stage one or more `.scss` files, lint-staged runs `stylelint --fix` on them and re-stages the fixed output before the commit is finalised. The `pre-commit` hook delegates entirely to lint-staged, so only staged files are checked — keeping pre-commit runs fast regardless of project size.
 
 <Tip>
   If Husky hooks are not triggering — for example, after a fresh clone or a Node.js upgrade — run `yarn lint` and `yarn format` manually before committing to ensure your changes meet the project's code quality standards. You can also re-initialise Husky by running `npx husky install`.

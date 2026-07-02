@@ -1,5 +1,5 @@
 ---
-title: "TypeScript Configuration and Babel Compilation"
+title: "TypeScript Setup: Configuration, Strict Mode, and Babel"
 sidebarTitle: "TypeScript"
 description: "How Setup Gulp uses TypeScript 5 with strict mode and compiles source files via Babel with @babel/preset-typescript for Shopify-compatible output."
 ---
@@ -93,6 +93,7 @@ The following `@types/*` packages are installed to provide TypeScript declaratio
 @types/node              # Node.js built-ins (fs, path, process, etc.)
 @types/gulp              # Gulp task and stream APIs
 @types/gulp-babel        # gulp-babel plugin typings
+@types/gulp-cache        # gulp-cache plugin typings
 @types/gulp-clean-css    # gulp-clean-css plugin typings
 @types/gulp-concat       # gulp-concat plugin typings
 @types/gulp-imagemin     # gulp-imagemin plugin typings
@@ -100,7 +101,11 @@ The following `@types/*` packages are installed to provide TypeScript declaratio
 @types/gulp-postcss      # gulp-postcss plugin typings
 @types/gulp-rename       # gulp-rename plugin typings
 @types/gulp-sass         # gulp-sass plugin typings
+@types/gulp-size         # gulp-size plugin typings
+@types/gulp-sourcemaps   # gulp-sourcemaps plugin typings
 @types/gulp-uglify       # gulp-uglify plugin typings
+@types/gulp-util         # gulp-util plugin typings
+@types/run-sequence      # run-sequence utility typings
 @types/browser-sync      # BrowserSync server typings
 @types/merge-stream      # merge-stream utility typings
 ```
