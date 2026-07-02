@@ -1,0 +1,402 @@
+---
+title: "SCSS Mixin Library Reference"
+sidebarTitle: "Mixins"
+description: "Full reference for every SCSS mixin in _mixins.scss — flexbox, typography, layout, transitions, borders, gradients, and more with usage examples."
+---
+
+`_mixins.scss` is the core utility library for Setup Gulp. Every mixin handles vendor-prefixing and cross-browser quirks internally, so call-sites stay clean. The file depends on `_functions.scss` (loaded at the top via `@use './functions'`) for color conversion and string helpers used by a handful of mixins.
+
+---
+
+## Typography
+
+### `font`
+
+```scss
+@include font($family, $size, $weight, $style, $stretch, $color, $lheight, $lspacing);
+```
+
+All parameters are optional. Any argument passed as `null` is omitted from the output so you never get spurious property declarations. Covers every typographic axis in one call.
+
+| Parameter | Default | CSS property |
+|-----------|---------|--------------|
+| `$family` | `null` | `font-family` |
+| `$size` | `null` | `font-size` |
+| `$weight` | `null` | `font-weight` |
+| `$style` | `null` | `font-style` |
+| `$stretch` | `null` | `font-stretch` |
+| `$color` | `null` | `color` |
+| `$lheight` | `null` | `line-height` |
+| `$lspacing` | `null` | `letter-spacing` |
+
+```scss
+.title {
+  @include mixins.font(fonts.$roboto-black, 1rem, 400, var(--black));
+}
+```
+
+### `font-face`
+
+```scss
+@include font-face($name, $path, $weight: null, $style: null, $exts: eot woff2 woff ttf svg);
+```
+
+Generates a complete `@font-face` block that covers every major web font format. The `$exts` list controls which `src` entries are emitted.
+
+```scss
+@include font-face('Roboto Black', '../fonts/roboto-black', 900, normal);
+```
+
+### `opacity`
+
+```scss
+@include opacity($opacity);
+```
+
+Sets `opacity` with an Internet Explorer 8 `filter: alpha(opacity=…)` fallback.
+
+```scss
+.overlay {
+  @include opacity(0.75);
+}
+```
+
+### `heading`
+
+```scss
+@include heading($size);
+```
+
+Generates `h1`–`h6` selectors with decreasing font sizes. Each heading level is 0.2 em smaller than the previous, starting from `$size`.
+
+```scss
+.article {
+  @include heading(2em);
+  // → h1 { font-size: 2em }  h2 { font-size: 1.8em }  … h6 { font-size: 1em }
+}
+```
+
+---
+
+## Flexbox
+
+Every flexbox mixin emits the legacy `-webkit-` prefix alongside the unprefixed property so older WebKit browsers are covered without extra effort.
+
+| Mixin | Default | Notes |
+|-------|---------|-------|
+| `@include flexbox` | — | `display: flex` with webkit prefix |
+| `@include inline-flex` | — | `display: inline-flex` with webkit prefix |
+| `@include flex-direction($value)` | `row` | Also aliased as `@include flex-dir($args...)` |
+| `@include flex-wrap($value)` | `nowrap` | |
+| `@include flex-flow($values)` | `row nowrap` | |
+| `@include order($int)` | `0` | |
+| `@include flex-grow($int)` | `1` | |
+| `@include flex-shrink($int)` | `0` | |
+| `@include flex-basis($value)` | `auto` | |
+| `@include flex($fg, $fs, $fb)` | `1, 0, auto` | Shorthand for grow / shrink / basis |
+| `@include justify-content($value)` | `flex-start` | Also aliased as `@include flex-just($args...)` |
+| `@include align-items($value)` | `stretch` | |
+| `@include align-self($value)` | `auto` | |
+| `@include align-content($value)` | `stretch` | |
+
+```scss
+.wrapper {
+  @include mixins.flexbox();
+  @include mixins.flex-wrap(wrap);
+  @include mixins.align-items(center);
+  @include mixins.flex-just(space-between);
+}
+
+.sidebar {
+  @include mixins.flex-direction(column);
+  @include mixins.flex-grow(1);
+}
+```
+
+---
+
+## Layout & Box Model
+
+### `box-sizing`
+
+```scss
+@include box-sizing($box-model);
+```
+
+Emits `-webkit-box-sizing`, `-moz-box-sizing`, and `box-sizing`. A silent placeholder `%box-sizing` is also available for `@extend`.
+
+```scss
+* {
+  @include mixins.box-sizing(border-box);
+}
+```
+
+### `border-radius`
+
+```scss
+@include border-radius($value: 3px);
+```
+
+Adds `-webkit-border-radius` and `-moz-border-radius` prefixes. Also sets `-webkit-background-clip: padding-box` and `background-clip: padding-box` to prevent color bleed at the corners.
+
+```scss
+.card {
+  @include mixins.border-radius(0.5rem);
+}
+```
+
+### `border`
+
+```scss
+@include border($direction: '', $width: 1px, $style: solid, $color: #000);
+```
+
+A directional border helper. Pass a `$direction` of `left`, `top`, `right`, or `bottom` to set only that side; pass an empty string `''` to set all four sides at once.
+
+```scss
+.panel {
+  @include mixins.border('', thin, solid, var(--gray-30));   // all sides
+  @include mixins.border(bottom, 2px, solid, var(--blue));   // bottom only
+}
+```
+
+### `clearfix`
+
+```scss
+@include clearfix();
+```
+
+Applies the classic `::after` clearfix. Also available as a silent placeholder `%clearfix` for `@extend`.
+
+```scss
+.row {
+  @include clearfix();
+}
+```
+
+### `reset-last-child`
+
+```scss
+@include reset-last-child($prop: margin);
+```
+
+Sets the given CSS property to `0` on the `:last-child` of the element — useful for stripping trailing margin or padding from the final item in a list.
+
+```scss
+.nav-list li {
+  @include reset-last-child(margin);
+}
+```
+
+---
+
+## Visual Effects
+
+### `box-shadow`
+
+```scss
+@include box-shadow($top, $left, $blur, $spread, $color, $inset: false);
+```
+
+Emits `-webkit-box-shadow` and `box-shadow`. Pass `$inset: true` to produce an inset shadow.
+
+```scss
+.base {
+  @include mixins.box-shadow(0, 10px, 10px, -15px, var(--gray-60));
+}
+
+.inset-card {
+  @include mixins.box-shadow(0, 4px, 8px, 0, var(--black-20), true);
+}
+```
+
+### `background-opacity`
+
+```scss
+@include background-opacity($color, $opacity: 0.3);
+```
+
+Sets a background color with an `rgba()` fallback. The mixin keeps a solid-color fallback for browsers that do not support `rgba()`.
+
+```scss
+.base {
+  @include mixins.background-opacity(var(--white), 1);
+}
+
+.modal-backdrop {
+  @include mixins.background-opacity(var(--black), 0.6);
+}
+```
+
+### `gradient`
+
+```scss
+@include gradient($start-color, $end-color, $orientation);
+```
+
+Generates a cross-browser gradient. `$orientation` accepts `vertical`, `horizontal`, or `radial`.
+
+```scss
+.hero {
+  @include mixins.gradient(var(--blue), var(--purple), horizontal);
+}
+```
+
+### `background-image`
+
+```scss
+@include background-image($imgpath, $position: 0 0, $repeat: no-repeat);
+```
+
+A shorthand for setting `background-image`, `background-position`, and `background-repeat` in one call.
+
+```scss
+.banner {
+  @include mixins.background-image('/assets/hero.jpg', center center);
+}
+```
+
+### `retina`
+
+```scss
+@include retina($image, $width, $height);
+```
+
+Wraps the high-DPI image swap in a `min-device-pixel-ratio: 2` / `-webkit-min-device-pixel-ratio: 2` media query.
+
+```scss
+.logo {
+  @include mixins.retina('/assets/logo@2x.png', 100px, 40px);
+}
+```
+
+### `backface-visibility`
+
+```scss
+@include backface-visibility($visibility: hidden);
+```
+
+Emits `-webkit-backface-visibility` and `backface-visibility`, useful when applying 3D transforms to prevent flickering.
+
+```scss
+.flip-card {
+  @include mixins.backface-visibility(hidden);
+}
+```
+
+---
+
+## Transforms & Animations
+
+### `transform`
+
+```scss
+@include transform($transformation);
+```
+
+Emits `-webkit-transform`, `-ms-transform`, and `transform`.
+
+```scss
+.icon {
+  @include mixins.transform(rotate(45deg));
+}
+```
+
+### `transform-style`
+
+```scss
+@include transform-style($style);
+```
+
+Emits `-webkit-transform-style` and `transform-style`. Typically used with `preserve-3d`.
+
+```scss
+.scene {
+  @include mixins.transform-style(preserve-3d);
+}
+```
+
+### `transition`
+
+```scss
+@include transition($property: all, $duration: 0.5s, $ease: linear);
+```
+
+Emits `-webkit-transition` and `transition`.
+
+```scss
+.button {
+  @include mixins.transition(background-color, 0.3s, ease-in-out);
+}
+```
+
+### `keyframes`
+
+```scss
+@include keyframes($name) {
+  // keyframe content via @content
+}
+```
+
+Wraps the animation block in both a `@-webkit-keyframes` and `@keyframes` at-rule.
+
+```scss
+@include mixins.keyframes(slide-in) {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+```
+
+---
+
+## User Interaction
+
+### `x-user-select`
+
+```scss
+@include x-user-select($value: none);
+```
+
+Emits the full vendor-prefixed stack: `-webkit-user-select`, `-moz-user-select`, `-ms-user-select`, and `user-select`.
+
+```scss
+.label {
+  @include mixins.x-user-select(none);
+}
+```
+
+### `input-placeholder`
+
+```scss
+@include input-placeholder() {
+  // styles via @content
+}
+```
+
+Generates `::-webkit-input-placeholder`, `:-moz-placeholder`, `::-moz-placeholder`, `:-ms-input-placeholder`, and `::placeholder` selectors in one go.
+
+```scss
+.search-input {
+  @include mixins.input-placeholder() {
+    color: var(--silver);
+    font-style: italic;
+  }
+}
+```
+
+---
+
+## Utility
+
+### `background`
+
+```scss
+@include background($color);
+```
+
+Dynamically generates a `.bg-{hex}` utility class for the given color, stripping the `#` from the hex value to form a valid class name. Uses `to-string()` and `str-replace()` from `_functions.scss` internally.
+
+```scss
+@include mixins.background(#3b82f6);
+// Outputs: .bg-3b82f6 { background: #3b82f6; }
+```

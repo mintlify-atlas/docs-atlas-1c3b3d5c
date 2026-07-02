@@ -1,0 +1,138 @@
+---
+title: "CSS Custom Property Color System"
+sidebarTitle: "Colors"
+description: "The color system defined in _colors.scss — named CSS custom properties for base colors and opacity variants from 90% down to 1.25%."
+---
+
+`_colors.scss` defines the entire design palette as CSS custom properties declared on `:root`. Because these are native CSS variables rather than Sass variables, they cascade at runtime — a Shopify theme can override any token by re-declaring it in a later `:root` block or on a scoped selector without recompiling the Sass. This makes the color system equally useful in CSS-in-JS contexts, Liquid templates, and JavaScript (via `getComputedStyle`).
+
+---
+
+## Base colors
+
+Every base color is defined as a CSS custom property. The hex values below are the compiled output; the raw source stores the `R, G, B` channel values via `hex-to-rgb()` (see [How hex values are stored](#how-hex-values-are-stored)).
+
+| Variable | Hex | Swatch |
+|----------|-----|--------|
+| `--black` | `#000` | Pure black |
+| `--near-black` | `#111` | Near black |
+| `--dark-gray` | `#333` | Dark gray |
+| `--mid-gray` | `#555` | Mid gray |
+| `--gray` | `#777` | Gray |
+| `--silver` | `#999` | Silver |
+| `--light-silver` | `#aaa` | Light silver |
+| `--moon-gray` | `#ccc` | Moon gray |
+| `--light-gray` | `#eee` | Light gray |
+| `--near-white` | `#f4f4f4` | Near white |
+| `--white` | `#fff` | Pure white |
+| `--red` | `#b91933` | Red |
+| `--orange` | `#f97316` | Orange |
+| `--yellow` | `#eab308` | Yellow |
+| `--purple` | `#a855f7` | Purple |
+| `--green` | `#22c55e` | Green |
+| `--blue` | `#3b82f6` | Blue |
+
+---
+
+## Opacity variants
+
+Every color in the palette (excluding `--white`, `--near-white`, and `--transparent`) ships with a full set of pre-computed opacity variants. They follow the naming pattern:
+
+```
+--{color}-{opacity}
+```
+
+where `{opacity}` corresponds to the following alpha levels:
+
+| Suffix | Alpha value |
+|--------|-------------|
+| `-90` | `0.9` |
+| `-80` | `0.8` |
+| `-70` | `0.7` |
+| `-60` | `0.6` |
+| `-50` | `0.5` |
+| `-40` | `0.4` |
+| `-30` | `0.3` |
+| `-20` | `0.2` |
+| `-10` | `0.1` |
+| `-05` | `0.05` |
+| `-025` | `0.025` |
+| `-0125` | `0.0125` |
+
+This gives you twelve opacity steps for every color — from nearly opaque to barely visible — all available as first-class CSS variables:
+
+```scss
+// Usage in SCSS
+.element {
+  background: var(--purple-50); // rgba(#a855f7, 0.5)
+  color: var(--black-80);
+}
+```
+
+```css
+/* Usage in plain CSS or Liquid */
+.overlay {
+  background-color: var(--black-60);
+  border: 1px solid var(--gray-30);
+}
+```
+
+---
+
+## How hex values are stored
+
+Rather than storing hex strings directly, `_colors.scss` uses the `hex-to-rgb()` function from `_functions.scss` to decompose each hex color into its raw `R, G, B` channel values. These channel values are what the custom property actually holds. The opacity variants then wrap those channels in `rgba()`:
+
+```scss
+// _colors.scss (source pattern)
+:root {
+  --purple: #{functions.hex-to-rgb(#a855f7)};  // stored as "168, 85, 247"
+  --purple-90: rgba(var(--purple), 0.9);
+  --purple-80: rgba(var(--purple), 0.8);
+  // … down to --purple-0125
+}
+```
+
+```css
+/* Compiled CSS output */
+:root {
+  --purple: 168, 85, 247;
+  --purple-90: rgba(168, 85, 247, 0.9);
+  --purple-80: rgba(168, 85, 247, 0.8);
+  /* … */
+}
+```
+
+<Note>
+Because `--purple` stores bare channel values (`168, 85, 247`), you **cannot** use it directly in a CSS `color` or `background` property without wrapping it: `color: var(--purple)` will not work. Always use either the base hex (e.g. `#a855f7`) or an opacity variant (e.g. `var(--purple-90)`). For full opacity, use `--purple-90` or the `rgba()` wrapper directly.
+</Note>
+
+---
+
+## Using colors in SCSS mixins
+
+The color tokens slot directly into the Setup Gulp mixin library. The examples below are taken from `app.scss`:
+
+```scss
+// Solid white background at full opacity
+.base {
+  @include mixins.background-opacity(var(--white), 1);
+}
+
+// Soft drop shadow using a gray opacity variant
+.card {
+  @include mixins.box-shadow(0, 10px, 10px, -15px, var(--gray-60));
+}
+
+// Subtle border using a light gray opacity variant
+.panel {
+  @include mixins.border('', thin, solid, var(--gray-30));
+}
+
+// Page background using a very light gray token
+body {
+  background-color: var(--gray-10);
+}
+```
+
+Because the tokens are CSS custom properties, any value you pass to a mixin remains as a `var(--…)` reference in the compiled CSS — the browser resolves the actual color at paint time, which means theme overrides work without recompilation.

@@ -1,0 +1,95 @@
+---
+title: "Code Quality: ESLint, Stylelint, and Prettier Setup"
+sidebarTitle: "Linting"
+description: "Configure and run ESLint for TypeScript, Stylelint for SCSS, and Prettier for formatting in Setup Gulp — including Husky pre-commit hooks."
+---
+
+Setup Gulp enforces code quality through a three-layer linting stack: ESLint handles TypeScript source files, Stylelint enforces SCSS conventions, and Prettier manages consistent formatting across all file types. These tools are wired together with Husky and lint-staged so that every commit is automatically checked before it lands in version control.
+
+## ESLint for TypeScript
+
+ESLint is configured with the `@typescript-eslint/parser` to understand TypeScript syntax and `@typescript-eslint/eslint-plugin` to apply TypeScript-specific rules. The base configuration extends three shared rule sets — `airbnb-base` for strict JavaScript best practices, `standard` for community-standard style, and `prettier` to disable any rules that would conflict with Prettier formatting.
+
+The following plugins are active:
+
+| Plugin | Purpose |
+|---|---|
+| `import` | Enforces correct ES module import/export usage |
+| `n` | Node.js-specific rules (replaces `node` plugin) |
+| `promise` | Best practices for Promise-based code |
+| `react` / `react-hooks` | React component and hooks rules |
+| `html` | Lints inline scripts in HTML files |
+| `prettier` | Surfaces Prettier formatting violations as ESLint errors |
+
+Run linting from the command line using the npm scripts or directly through Gulp:
+
+```bash
+yarn lint          # ESLint with --fix on src/**/*.ts
+yarn lint:check    # ESLint without auto-fix (CI-safe)
+gulp lintJs        # Run linting as part of the Gulp pipeline
+```
+
+The `gulp lintJs` task sources all `.ts` files from `./src/js/`, pipes them through `gulp-eslint`, prints a formatted report, and calls `eslint.failAfterError()` to halt the build if any violations remain:
+
+```js
+gulp.task('lintJs', () =>
+  gulp.src(['./src/js/*.ts'])
+    .pipe(eslint())
+    .pipe(eslint.format())
+    .pipe(eslint.failAfterError())
+)
+```
+
+## Stylelint for SCSS
+
+Stylelint validates all SCSS source files against two shared configurations: `stylelint-config-standard-scss` for SCSS-specific syntax rules and `stylelint-config-rational-order` (via `stylelint-order`) to enforce a logical CSS property ordering. The `stylelint-order` plugin is included to handle the ordering rules.
+
+For the Gulp pipeline, `gulp-sass-lint` powers the dedicated `lintScss` task, which sources every `.scss` file from `./src/scss/`, formats the report, and fails the pipeline on any error:
+
+```js
+gulp.task('lintScss', () =>
+  gulp.src('./src/scss/*.scss')
+    .pipe(sasslint())
+    .pipe(sasslint.format())
+    .pipe(sasslint.failOnError())
+)
+```
+
+Staged SCSS files are also linted automatically before every commit through lint-staged (see [Husky pre-commit hooks](#husky-pre-commit-hooks) below).
+
+## Prettier
+
+Prettier handles opinionated formatting across JavaScript, TypeScript, JSX, TSX, and SCSS files. It is integrated with ESLint via `eslint-config-prettier` (which turns off conflicting ESLint rules) and `eslint-plugin-prettier` (which re-exposes Prettier violations as ESLint errors), so a single `yarn lint` pass enforces both style and formatting.
+
+Three scripts cover different use cases:
+
+```bash
+yarn format          # prettier --write . (format every file in the project)
+yarn prettier        # prettier --check (read-only check, suitable for CI)
+yarn prettier:fix    # prettier --write for js, jsx, ts, tsx, scss only
+```
+
+Use `yarn prettier` in CI pipelines where you want a failing exit code without modifying files, and `yarn format` locally when you want a quick full-project cleanup.
+
+## Husky pre-commit hooks
+
+Husky intercepts `git commit` and delegates to lint-staged, which runs targeted fixers only on the files actually staged for the commit. This keeps pre-commit checks fast regardless of project size.
+
+The configuration lives directly in `package.json`:
+
+```json
+"husky": {
+  "hooks": {
+    "pre-commit": "lint-staged"
+  }
+},
+"lint-staged": {
+  "*.scss": ["stylelint --fix", "git add"]
+}
+```
+
+When you stage one or more `.scss` files, lint-staged runs `stylelint --fix` on them and re-stages the fixed output before the commit is finalised. TypeScript files are covered by the `precommit` script (`yarn run lint`), which you can invoke manually or wire into a separate lint-staged entry.
+
+<Tip>
+  If Husky hooks are not triggering — for example, after a fresh clone or a Node.js upgrade — run `yarn lint` and `yarn format` manually before committing to ensure your changes meet the project's code quality standards. You can also re-initialise Husky by running `npx husky install`.
+</Tip>

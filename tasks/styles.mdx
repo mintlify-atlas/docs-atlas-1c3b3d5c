@@ -1,0 +1,158 @@
+---
+title: "SCSS Compilation and CSS Minification Tasks"
+sidebarTitle: "Styles"
+description: "How Setup Gulp compiles SCSS with Bourbon and autoprefixer, merges normalize.css, and minifies the output CSS into the assets directory."
+---
+
+Setup Gulp uses a two-stage approach to stylesheet processing. SCSS source files are compiled to plain CSS and written to `src/css/`, and a separate minification task then picks those files up, compresses them, and outputs them to `assets/`. This separation means each stage can run independently and BrowserSync can stream CSS updates without a full page reload.
+
+---
+
+## `sass` Task
+
+The `sass` task handles root-level SCSS files at `./src/scss/*.scss`. Before compiling, it uses `merge-stream` to prepend `normalize.css` from `node_modules/` to the stream, so every build starts from a consistent CSS baseline. The merged stream is concatenated into `styles.css`, then compiled through `compileSass`.
+
+**Source glob:** `./src/scss/*.scss`
+
+```js
+gulp.task('sass', () => {
+  const reset = gulp.src('node_modules/normalize.css/normalize.css')
+  const scss  = gulp.src(paths.sass)
+
+  return merge(reset, scss)
+    .pipe(plumber({ errorHandler: handleErrors }))
+    .pipe(concat('styles.css'))
+    .pipe(compileSass(paths.sass, ''))
+})
+```
+
+The `compileSass` helper that powers this (and the component/section tasks) is:
+
+```js
+const compileSass = (srcPath, prefix) => {
+  return gulp.src(srcPath)
+    .pipe(plumber({ errorHandler: handleErrors }))
+    .pipe(
+      sassCompiler({
+        includePaths: [].concat(bourbonPaths, neatPaths),
+        errLogToConsole: true
+      })
+    )
+    .pipe(postcss([autoprefixer()]))
+    .pipe(size({ gzip: true, showFiles: true }))
+    .pipe(rename({ prefix, suffix: '', dirname: '' }))
+    .pipe(gulp.dest('./src/css'))
+    .pipe(browserSync.stream())
+}
+```
+
+The include paths for both [Bourbon](https://www.bourbon.io/) and [Bourbon Neat](https://neat.bourbon.io/) are passed directly to the Sass compiler, so you can use Bourbon mixins and the Neat grid system anywhere in your SCSS without explicit `@import` path configuration.
+
+---
+
+## `sassComponents` Task
+
+The `sassComponents` task compiles every SCSS file found in `./src/scss/components/` and adds a `component-` prefix to the output filename so compiled component styles are clearly namespaced in `src/css/`.
+
+**Source glob:** `./src/scss/components/*.scss`
+
+```js
+gulp.task('sassComponents', () => compileSass(paths.sassComponents, 'component-'))
+```
+
+**Example rename:**
+
+| Source | Output |
+|--------|--------|
+| `src/scss/components/loading-spinner.scss` | `src/css/component-loading-spinner.css` |
+| `src/scss/components/modal.scss` | `src/css/component-modal.css` |
+
+---
+
+## `sassSections` Task
+
+The `sassSections` task compiles every SCSS file in `./src/scss/sections/` and adds a `section-` prefix to output filenames, matching the naming convention used by Shopify theme sections.
+
+**Source glob:** `./src/scss/sections/*.scss`
+
+```js
+gulp.task('sassSections', () => compileSass(paths.sassSections, 'section-'))
+```
+
+**Example rename:**
+
+| Source | Output |
+|--------|--------|
+| `src/scss/sections/hero.scss` | `src/css/section-hero.css` |
+| `src/scss/sections/product.scss` | `src/css/section-product.css` |
+
+---
+
+## `lintScss` Task
+
+The `lintScss` task runs all root-level SCSS files through `gulp-sass-lint`, prints a formatted report to the console, and fails the process if any linting errors are found. It uses `plumber` for error handling during the piping stage.
+
+**Source glob:** `./src/scss/*.scss`
+
+```js
+gulp.task('lintScss', () =>
+  gulp
+    .src(paths.sass)
+    .pipe(plumber({ errorHandler: handleErrors }))
+    .pipe(sasslint())
+    .pipe(sasslint.format())
+    .pipe(sasslint.failOnError())
+)
+```
+
+Run it directly with:
+
+```bash
+gulp lintScss
+```
+
+---
+
+## `minifyCss` Task
+
+The `minifyCss` task reads every CSS file produced by the SCSS compilation tasks from `./src/css/`, runs them through `gulp-clean-css` for minification, attaches inline source maps, appends a `.min` suffix to each filename, and writes the final files to `./assets/`.
+
+**Source glob:** `./src/css/*.css`
+
+```js
+gulp.task('minifyCss', () =>
+  gulp
+    .src(paths.css)
+    .pipe(sourcemaps.init())
+    .pipe(cleanCSS())
+    .pipe(sourcemaps.write())
+    .pipe(size({ gzip: true, showFiles: true }))
+    .pipe(rename({ suffix: '.min' }))
+    .pipe(gulp.dest(paths.dest))
+    .pipe(browserSync.stream())
+)
+```
+
+**Example rename:**
+
+| Input (`src/css/`) | Output (`assets/`) |
+|--------------------|--------------------|
+| `app.css` | `app.min.css` |
+| `component-modal.css` | `component-modal.min.css` |
+| `section-hero.css` | `section-hero.min.css` |
+
+Run it directly with:
+
+```bash
+gulp minifyCss
+```
+
+---
+
+<Tip>
+  The CSS compilation pipeline is intentionally two-stage. The `sass`, `sassComponents`, and `sassSections` tasks write plain, uncompressed CSS to `src/css/` — a staging area you can inspect during development. Once those files are ready, `minifyCss` reads from `src/css/` and outputs production-ready `.min.css` files to `assets/`. The `watch` task links these stages: changes to `src/scss/` trigger `sass*` tasks, which write to `src/css/`, which in turn triggers `minifyCss` automatically.
+</Tip>
+
+<Note>
+  Both the SCSS compilation tasks and `minifyCss` pipe through `browserSync.stream()`. This pushes CSS changes directly into the browser over a WebSocket connection without triggering a full page reload, giving you near-instant style feedback during development.
+</Note>

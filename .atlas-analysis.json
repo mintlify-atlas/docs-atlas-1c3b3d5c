@@ -1,0 +1,90 @@
+{
+  "projectType": "frontend",
+  "projectName": "Setup Gulp",
+  "projectDescription": "A Gulp-based front-end build starter for automating Shopify theme development — compiling SCSS/Sass, minifying CSS and JavaScript, optimizing images, and live-reloading with BrowserSync.",
+  "theme": "palm",
+  "primaryColor": "#cc4545",
+  "lightColor": "#e49ca4",
+  "darkColor": "#ffffff",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting Started",
+        "pages": [
+          "introduction",
+          "quickstart",
+          "project-structure"
+        ]
+      },
+      {
+        "group": "Gulp Tasks",
+        "pages": [
+          "tasks/overview",
+          "tasks/styles",
+          "tasks/scripts",
+          "tasks/assets"
+        ]
+      },
+      {
+        "group": "SCSS System",
+        "pages": [
+          "scss/overview",
+          "scss/mixins",
+          "scss/colors",
+          "scss/functions"
+        ]
+      },
+      {
+        "group": "Tooling & Quality",
+        "pages": [
+          "tooling/linting",
+          "tooling/testing",
+          "tooling/typescript"
+        ]
+      },
+      {
+        "group": "Configuration",
+        "pages": [
+          "configuration/gulp-config",
+          "configuration/shopify-integration"
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Automatic Sass/SCSS compilation to CSS with Bourbon and Bourbon Neat support",
+    "CSS autoprefixing and minification via PostCSS and gulp-clean-css",
+    "JavaScript/TypeScript transpilation with Babel and uglification",
+    "Image optimization (JPEG, PNG, GIF, SVG) via gulp-imagemin",
+    "Live browser reloading with BrowserSync during development",
+    "Sass and JavaScript linting via Stylelint and ESLint",
+    "Husky pre-commit hooks with lint-staged for SCSS linting",
+    "Unit testing with Vitest and jsdom",
+    "Shopify-ready asset output structure",
+    "Source map generation for CSS and JavaScript"
+  ],
+  "publicApiSurface": [
+    "gulp serve — start BrowserSync dev server",
+    "gulp watch — watch all src files and recompile on change",
+    "gulp build — full production build (parallel tasks)",
+    "gulp cleanAssets — delete compiled assets and src/css",
+    "gulp sass — compile root SCSS files",
+    "gulp sassComponents — compile component SCSS with component- prefix",
+    "gulp sassSections — compile section SCSS with section- prefix",
+    "gulp minifyCss — minify compiled CSS to assets/",
+    "gulp lintScss — lint SCSS files via sass-lint",
+    "gulp js — compile and minify root TypeScript files",
+    "gulp jsComponents — compile component TypeScript with component- prefix",
+    "gulp jsSections — compile section TypeScript with section- prefix",
+    "gulp lintJs — lint TypeScript files via ESLint",
+    "gulp fonts — copy fonts to assets/",
+    "gulp images — optimise images to assets/",
+    "yarn start — alias for gulp watch",
+    "yarn serve — alias for gulp serve",
+    "yarn build — alias for gulp build",
+    "yarn test — run Vitest test suite",
+    "yarn lint — run ESLint on src/**/*.ts",
+    "yarn format — run Prettier on all files",
+    "yarn reset — clean node_modules, build, css, and assets"
+  ]
+}

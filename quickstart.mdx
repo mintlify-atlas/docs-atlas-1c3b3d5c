@@ -1,47 +1,178 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with Setup Gulp in Under Five Minutes"
+sidebarTitle: "Quickstart"
+description: "Clone the Setup Gulp repository, install dependencies with Yarn, and start the BrowserSync dev server and Gulp file watcher in four steps."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+Getting a fully functional Gulp build pipeline running for your Shopify theme takes less than five minutes. All you need is a terminal, Node.js, and Yarn. Once the dependencies are installed, two commands — `yarn serve` and `yarn start` — spin up BrowserSync and the file watcher simultaneously, giving you instant feedback as you work on styles, scripts, images, and fonts.
 
 ## Prerequisites
 
-Before you begin, you must have:
+Before you begin, make sure the following tools are available on your machine:
 
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
+- **Node.js** — v18 or later is recommended. Download from [nodejs.org](https://nodejs.org).
+- **Yarn** — v4.1.1 (defined in `packageManager` in `package.json`). Enable it via Corepack with `corepack enable`.
 
-## Get started
+## Setup Steps
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Clone the repository">
+    Clone Setup Gulp to your local machine using either SSH (recommended for contributors) or HTTPS.
+
+    <CodeGroup>
+      ```bash SSH
+      git clone git@github.com:MisterGeorge/setup-gulp.git
+      ```
+
+      ```bash HTTPS
+      git clone https://github.com/MisterGeorge/setup-gulp.git
+      ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Navigate into the project directory">
+    Move into the newly cloned folder before running any further commands.
 
     ```bash
-    npm install your-package
+    cd setup-gulp
     ```
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+
+  <Step title="Install dependencies">
+    Install all Node.js dependencies declared in `package.json`. Yarn will resolve and cache every package, including Gulp, Sass, Babel, BrowserSync, and Vitest.
 
     ```bash
-    your-cli init
+    yarn
     ```
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+
+  <Step title="Start the BrowserSync dev server">
+    Launch BrowserSync, which serves the project from the repository root and opens your browser at `http://localhost:3000`. BrowserSync watches `index.html` for changes and triggers a full page reload automatically.
 
     ```bash
-    your-cli start
+    yarn serve
+    ```
+  </Step>
+
+  <Step title="Start watching source files">
+    In a second terminal tab, start the Gulp file watcher. This runs `gulp watch`, which monitors every path inside `src/` and re-compiles the relevant assets whenever a file changes. Compiled output streams directly to `assets/` and BrowserSync picks up the changes immediately.
+
+    ```bash
+    yarn start
     ```
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## Available Scripts
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
+Every script in `package.json` maps to a specific Gulp task or CLI command. Use these throughout your development, testing, and CI workflows.
+
+<AccordionGroup>
+  <Accordion title="yarn start — watch source files">
+    Runs `gulp watch`. Monitors all source paths under `src/` (SCSS, TypeScript, images, and fonts) and re-runs the appropriate compilation task on every change. BrowserSync streams CSS updates without a full reload.
+
+    ```bash
+    yarn start
+    ```
+  </Accordion>
+
+  <Accordion title="yarn serve — start the BrowserSync server">
+    Runs `gulp serve`. Starts a BrowserSync static server rooted at the project directory and opens `http://localhost:3000` in your default browser. Run this alongside `yarn start` in a separate terminal.
+
+    ```bash
+    yarn serve
+    ```
+  </Accordion>
+
+  <Accordion title="yarn build — compile all assets">
+    Runs `gulp build`, which executes all compilation tasks in parallel: `cleanAssets`, `fonts`, `images`, `jsComponents`, `jsSections`, `js`, `sassComponents`, `sassSections`, `sass`, and `minifyCss`. Use this for a full, fresh build before deploying your theme.
+
+    ```bash
+    yarn build
+    ```
+  </Accordion>
+
+  <Accordion title="yarn clean — delete compiled output">
+    Runs `gulp cleanAssets`. Deletes all files inside `assets/` and `src/css/` while leaving the empty directories in place. Useful when you want a clean slate before a fresh build.
+
+    ```bash
+    yarn clean
+    ```
+  </Accordion>
+
+  <Accordion title="yarn test — run unit tests">
+    Runs Vitest in watch mode. Tests are discovered from `__tests__/` and any `*.test.ts` files. The jsdom environment and global APIs (`describe`, `it`, `expect`) are available without any imports.
+
+    ```bash
+    yarn test
+    ```
+  </Accordion>
+
+  <Accordion title="yarn test:ui — open the Vitest browser UI">
+    Starts the Vitest interactive browser UI at `http://localhost:51204` (or the next available port), where you can run, filter, and inspect individual test results visually.
+
+    ```bash
+    yarn test:ui
+    ```
+  </Accordion>
+
+  <Accordion title="yarn coverage — generate test coverage report">
+    Runs `vitest run --coverage` using the V8 provider. Outputs a text summary to the terminal and generates detailed JSON and HTML reports in the `coverage/` directory. The `gulpfile.js` is excluded from coverage.
+
+    ```bash
+    yarn coverage
+    ```
+  </Accordion>
+
+  <Accordion title="yarn lint — lint and auto-fix TypeScript">
+    Runs ESLint against all `*.ts` files under `src/` and automatically applies safe fixes. Respects the `.eslintignore` file. Run this before committing to catch type and style issues early.
+
+    ```bash
+    yarn lint
+    ```
+  </Accordion>
+
+  <Accordion title="yarn lint:check — lint TypeScript without fixing">
+    Runs ESLint in check-only mode (no auto-fix). Useful in CI pipelines where you want linting to fail fast without modifying files.
+
+    ```bash
+    yarn lint:check
+    ```
+  </Accordion>
+
+  <Accordion title="yarn format — format all files with Prettier">
+    Runs `prettier --write .` to auto-format every supported file in the project (JS, TS, SCSS, JSON, Markdown, etc.). Apply this before committing to keep diffs clean.
+
+    ```bash
+    yarn format
+    ```
+  </Accordion>
+
+  <Accordion title="yarn prettier — check formatting without writing">
+    Runs Prettier in check mode across all JS, JSX, TS, TSX, and SCSS files. Exits with a non-zero code if any file would be reformatted, making it suitable for CI checks.
+
+    ```bash
+    yarn prettier
+    ```
+  </Accordion>
+
+  <Accordion title="yarn prettier:fix — fix formatting for specific file types">
+    Runs `prettier --write` targeting JS, JSX, TS, TSX, and SCSS files. Similar to `yarn format` but scoped to those specific extensions.
+
+    ```bash
+    yarn prettier:fix
+    ```
+  </Accordion>
+
+  <Accordion title="yarn reset — full environment reset">
+    The nuclear option. Removes `package-lock.json`, `node_modules/`, `build/`, and `src/css/`, then runs `gulp cleanAssets` to wipe `assets/`. After running this, re-install dependencies with `yarn` and rebuild with `yarn build`.
+
+    ```bash
+    yarn reset
+    ```
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+  If the build starts behaving unexpectedly — stale cache, mismatched dependency versions, or corrupted output files — run `yarn reset` followed by `yarn` and `yarn build`. This wipes all generated directories and node modules, giving you a completely clean environment to start from.
 </Tip>

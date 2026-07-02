@@ -1,0 +1,113 @@
+---
+title: "Font and Image Processing with Gulp"
+sidebarTitle: "Assets"
+description: "How Setup Gulp copies fonts and optimises images using gulp-imagemin with mozjpeg, optipng, gifsicle, and svgo before outputting them to assets/."
+---
+
+Beyond styles and scripts, Setup Gulp includes dedicated tasks for static assets — fonts and images. The `fonts` task is a straightforward copy operation that preserves directory structure, while the `images` task runs every image through a multi-encoder optimisation pipeline powered by `gulp-imagemin`. Both tasks write directly to `assets/`, the directory that maps one-to-one with a Shopify theme's `assets/` folder. A `cleanAssets` utility task rounds out the group by wiping the output directories before a fresh build.
+
+---
+
+## `fonts` Task
+
+The `fonts` task copies the entire contents of `./src/fonts/` to `./assets/`, preserving any subdirectory structure. It uses `gulp-plumber` to handle errors without breaking the watcher process.
+
+**Source glob:** `./src/fonts/**/*`
+
+```js
+gulp.task('fonts', () =>
+  gulp
+    .src(paths.font)
+    .pipe(plumber({ errorHandler: handleErrors }))
+    .pipe(gulp.dest(paths.dest))
+)
+```
+
+Place any font format you need in `src/fonts/` and it will be copied verbatim to `assets/`. Common formats supported:
+
+- `.ttf` — TrueType Font
+- `.woff` — Web Open Font Format
+- `.woff2` — Web Open Font Format 2 (preferred for modern browsers)
+- `.eot` — Embedded OpenType (legacy IE support)
+- `.otf` — OpenType Font
+- `.svg` — SVG font (legacy)
+
+---
+
+## `images` Task
+
+The `images` task reads all image files matching `./src/img/**/*.+(png|jpg|jpeg|gif|svg)` and passes them through `gulp-imagemin` with four dedicated encoders — one per file type. The optimised images are written to `./assets/` with the same relative filenames.
+
+**Source glob:** `./src/img/**/*.+(png|jpg|jpeg|gif|svg)`
+
+```js
+gulp.task('images', () =>
+  gulp
+    .src(paths.img)
+    .pipe(plumber({ errorHandler: handleErrors }))
+    .pipe(
+      imagemin([
+        gifsicle({ interlaced: true }),
+        mozjpeg({ quality: 75, progressive: true }),
+        optipng({ optimizationLevel: 5 }),
+        svgo({
+          plugins: [
+            { name: 'removeViewBox', active: true },
+            { name: 'cleanupIDs', active: false },
+          ],
+        }),
+      ])
+    )
+    .pipe(gulp.dest(paths.dest))
+)
+```
+
+The four encoders and their settings are:
+
+<CardGroup cols={2}>
+  <Card title="gifsicle — GIF" icon="film">
+    Optimises GIF files with `interlaced: true`, enabling progressive rendering so GIFs display top-to-bottom as they load rather than waiting for the full file.
+  </Card>
+  <Card title="mozjpeg — JPEG" icon="image">
+    Compresses JPEG and JPG files at `quality: 75` with `progressive: true`. Progressive encoding reorders the JPEG data so a low-resolution version appears immediately, improving perceived load time.
+  </Card>
+  <Card title="optipng — PNG" icon="shapes">
+    Optimises PNG files at `optimizationLevel: 5` — the midpoint of the 0–7 scale, balancing compression ratio against processing time.
+  </Card>
+  <Card title="svgo — SVG" icon="vector-square">
+    Cleans SVG markup with `removeViewBox: true` (strips the `viewBox` attribute) and `cleanupIDs: false` (preserves existing element IDs to avoid breaking inline SVG references).
+  </Card>
+</CardGroup>
+
+---
+
+## `cleanAssets` Task
+
+The `cleanAssets` task deletes all files inside `./assets/` and all files inside `./src/css/`, while keeping the empty directories themselves intact. It is automatically included in the `build` task and can be run on its own before a fresh compile.
+
+```js
+gulp.task('cleanAssets', () =>
+  deleteAsync([
+    './assets/**',
+    '!./assets',
+    './src/css/**',
+    '!./src/css'
+  ])
+)
+```
+
+The negation patterns (`!./assets`, `!./src/css`) tell `del` to skip the directories themselves, so Gulp does not have to recreate them before writing output files. Run it directly with:
+
+```bash
+yarn clean
+```
+
+---
+
+<Note>
+  The `assets/` directory in this project is the direct equivalent of the `assets/` directory in a Shopify theme. When you deploy your theme, the compiled and optimised files in `assets/` — including `.min.css` files, `.min.js` files, fonts, and images — are what get uploaded to Shopify. No source files from `src/` are ever referenced in production Liquid templates.
+</Note>
+
+<Tip>
+  The default mozjpeg quality of `75` is a widely accepted starting point that offers good visual fidelity at significantly reduced file sizes. If your store's images look noticeably degraded at this setting (common with photographs containing fine gradients or text), try `quality: 80` or `85`. For maximum performance on image-heavy pages, drop toward `60`–`65` and compare visually — most users cannot distinguish the difference below `70`.
+</Tip>

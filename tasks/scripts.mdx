@@ -1,0 +1,136 @@
+---
+title: "TypeScript Transpilation and JavaScript Minification"
+sidebarTitle: "Scripts"
+description: "How Setup Gulp uses Babel and gulp-uglify to transpile TypeScript source files, generate source maps, and output minified JavaScript into assets/."
+---
+
+Setup Gulp's script pipeline takes TypeScript source files from `src/js/`, transpiles them through Babel, minifies the output with `gulp-uglify`, generates inline source maps for debugging, and writes the final `.min.js` files directly to `assets/`. There are three parallel script tasks, each targeting a different subdirectory and applying the appropriate filename prefix, mirroring the SCSS naming convention used in the styles pipeline.
+
+---
+
+## `js` Task
+
+The `js` task handles root-level TypeScript files at `./src/js/*.ts`. It feeds each file through the `optimizeJs` helper, which runs Babel transpilation, uglification, source map generation, and file renaming in a single pipeline.
+
+**Source glob:** `./src/js/*.ts`
+
+```js
+gulp.task('js', () => optimizeJs(paths.js, ''))
+```
+
+The `optimizeJs` helper used by all three script tasks is:
+
+```js
+const optimizeJs = (srcPath, prefix) => {
+  return gulp
+    .src(srcPath)
+    .pipe(plumber({ errorHandler: handleErrors }))
+    .pipe(babel())
+    .pipe(uglify())
+    .pipe(sourcemaps.init())
+    .pipe(size({ gzip: true, showFiles: true }))
+    .pipe(rename({ prefix, suffix: '.min' }))
+    .pipe(sourcemaps.write())
+    .pipe(gulp.dest(paths.dest))
+}
+```
+
+**Example rename:**
+
+| Source | Output |
+|--------|--------|
+| `src/js/app.ts` | `assets/app.min.js` |
+| `src/js/theme.ts` | `assets/theme.min.js` |
+
+---
+
+## `jsComponents` Task
+
+The `jsComponents` task compiles every TypeScript file found in `./src/js/components/` and prepends `component-` to each output filename, keeping reusable UI component scripts clearly identified in `assets/`.
+
+**Source glob:** `./src/js/components/*.ts`
+
+```js
+gulp.task('jsComponents', () => optimizeJs(paths.jsComponents, 'component-'))
+```
+
+**Example rename:**
+
+| Source | Output |
+|--------|--------|
+| `src/js/components/cart.ts` | `assets/component-cart.min.js` |
+| `src/js/components/drawer.ts` | `assets/component-drawer.min.js` |
+
+---
+
+## `jsSections` Task
+
+The `jsSections` task compiles every TypeScript file in `./src/js/sections/` and prepends `section-` to each output filename, matching the Shopify section naming pattern.
+
+**Source glob:** `./src/js/sections/*.ts`
+
+```js
+gulp.task('jsSections', () => optimizeJs(paths.jsSections, 'section-'))
+```
+
+**Example rename:**
+
+| Source | Output |
+|--------|--------|
+| `src/js/sections/product.ts` | `assets/section-product.min.js` |
+| `src/js/sections/collection.ts` | `assets/section-collection.min.js` |
+
+---
+
+## `lintJs` Task
+
+The `lintJs` task runs root-level TypeScript files through `gulp-eslint`, prints a formatted lint report to the console, and fails the process after errors are found so linting failures are visible in CI.
+
+**Source glob:** `./src/js/*.ts`
+
+```js
+gulp.task('lintJs', () =>
+  gulp
+    .src([paths.js])
+    .pipe(eslint())
+    .pipe(eslint.format())
+    .pipe(eslint.failAfterError())
+)
+```
+
+Run it directly with:
+
+```bash
+gulp lintJs
+```
+
+---
+
+## Babel Configuration
+
+Babel is the transpiler at the core of every script task. The project's `devDependencies` in `package.json` include the following Babel packages, which together handle modern TypeScript and JavaScript down-compilation:
+
+<CardGroup cols={2}>
+  <Card title="@babel/preset-env" icon="layer-group">
+    Transpiles modern JavaScript syntax to a target compatible with the `browserslist` setting (`last 2 versions`). Handles ES modules, async/await, optional chaining, and more.
+  </Card>
+  <Card title="@babel/preset-typescript" icon="code">
+    Strips TypeScript type annotations and compiles `.ts` files to plain JavaScript. Type-checking is handled separately by `tsc`.
+  </Card>
+  <Card title="@babel/plugin-transform-runtime" icon="rotate">
+    Replaces inline Babel helpers with references to `@babel/runtime`, reducing output bundle size across multiple compiled files.
+  </Card>
+  <Card title="@babel/plugin-proposal-class-properties" icon="object-group">
+    Enables class field declarations (e.g. `class Foo { bar = 1 }`) in TypeScript and modern JavaScript source files.
+  </Card>
+</CardGroup>
+
+---
+
+<Tip>
+  The `component-` prefix is intended for reusable UI elements that appear on multiple pages — carousels, modals, drawers, notification banners. The `section-` prefix is intended for page-level scripts tied to a specific Shopify section — product page logic, collection filters, cart behaviour. Keeping them separate makes it easy to load only the scripts relevant to the current page template.
+</Tip>
+
+<Warning>
+  TypeScript source files in `src/js/` are never served or referenced directly. Only the compiled, minified files in `assets/` (e.g. `assets/component-cart.min.js`) should be referenced in your Shopify theme's Liquid templates. Referencing source `.ts` files will result in syntax errors in the browser.
+</Warning>

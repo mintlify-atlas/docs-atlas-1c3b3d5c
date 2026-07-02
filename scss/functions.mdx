@@ -1,0 +1,145 @@
+---
+title: "SCSS Utility Functions Reference"
+sidebarTitle: "Functions"
+description: "The three Sass utility functions in _functions.scss: hex-to-rgb for color conversion, str-replace for string manipulation, and to-string for value inspection."
+---
+
+`_functions.scss` provides three pure Sass utility functions that are used throughout the mixin library and color system. They handle the low-level work of color decomposition and string manipulation so the higher-level files (`_colors.scss`, `_mixins.scss`) stay readable. The file is loaded into `_mixins.scss` with `@use './functions'` at the top of that partial.
+
+---
+
+## `hex-to-rgb($hex)`
+
+Converts a Sass color value to a comma-separated `R, G, B` channel string. The output is designed to be interpolated into a CSS custom property so the property stores bare channel values that can later be wrapped in `rgba()` at any opacity.
+
+**Parameters**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$hex` | Sass color | Any valid Sass color value, e.g. `#a855f7` or `purple` |
+
+**Returns** — A string in the form `"R, G, B"`, e.g. `"168, 85, 247"`.
+
+```scss
+:root {
+  --purple: #{hex-to-rgb(#a855f7)};
+  // Result: --purple: 168, 85, 247;
+}
+
+// Then use the stored channels with rgba():
+.element {
+  background: rgba(var(--purple), 0.5);
+  // Resolves to: rgba(168, 85, 247, 0.5)
+}
+```
+
+<Note>
+This function is the foundation of the entire opacity variant system in `_colors.scss`. Every color token stores its value as raw channels via `hex-to-rgb()`, which is what makes `var(--purple-50)` — defined as `rgba(var(--purple), 0.5)` — resolvable by the browser.
+</Note>
+
+**Implementation**
+
+```scss
+@function hex-to-rgb($hex) {
+  @return red($hex), green($hex), blue($hex);
+}
+```
+
+Sass's built-in `red()`, `green()`, and `blue()` channel functions each return an integer (0–255). The function returns them as a comma-separated list, which interpolation (`#{}`) then renders as the `"R, G, B"` string.
+
+---
+
+## `str-replace($string, $search, $replace: '')`
+
+Performs a recursive find-and-replace on a Sass string. Every occurrence of `$search` within `$string` is substituted with `$replace`. When `$replace` is omitted it defaults to an empty string, effectively deleting all occurrences of the search term.
+
+**Parameters**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `$string` | String | — | The source string to search within |
+| `$search` | String | — | The substring to find |
+| `$replace` | String | `''` | The replacement substring; omit to delete |
+
+**Returns** — The modified string with all occurrences replaced.
+
+```scss
+// Remove the # from a hex color string
+$color: '#a855f7';
+$color-without-hash: str-replace($color, '#');
+// Result: 'a855f7'
+```
+
+```scss
+// This is how the background() mixin builds utility class names:
+@mixin background($color) {
+  $color_without_hash: str-slice(to-string($color), 2);
+  .bg-#{$color_without_hash} {
+    background: #{$color};
+  }
+}
+// @include background(#3b82f6); → .bg-3b82f6 { background: #3b82f6; }
+```
+
+```scss
+// Substitute one substring for another
+$path: 'fonts/my-font.eot?#iefix';
+$cleaned: str-replace($path, '?#iefix', '');
+// Result: 'fonts/my-font.eot'
+```
+
+**Implementation**
+
+```scss
+@function str-replace($string, $search, $replace: '') {
+  $index: str-index($string, $search);
+  @if $index {
+    $prefix: str-slice($string, 1, $index - 1);
+    $suffix: str-slice($string, $index + str-length($search));
+    @return #{$prefix}#{$replace}#{str-replace($suffix, $search, $replace)};
+  }
+  @return $string;
+}
+```
+
+The function calls itself recursively on the remaining `$suffix` after each replacement, so all occurrences are handled — not just the first one.
+
+---
+
+## `to-string($value)`
+
+Converts any Sass value to its string representation using Sass's native `inspect()` function. This is a thin named wrapper that makes intent explicit at call-sites.
+
+**Parameters**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `$value` | Any | Any Sass value: number, color, list, map, boolean, etc. |
+
+**Returns** — A string representation of the value, identical to what `inspect()` would produce.
+
+```scss
+$size: 16px;
+$str: to-string($size);
+// => "16px"
+
+$color: #3b82f6;
+$str: to-string($color);
+// => "#3b82f6"
+
+$list: 1px solid red;
+$str: to-string($list);
+// => "1px solid red"
+```
+
+<Note>
+`to-string()` is used internally by `str-replace()` to convert a Sass color value (which Sass stores as a typed color object) into a plain string before performing substring operations. Without this step, `str-replace()` would receive a color object rather than the `"#rrggbb"` string it needs to strip the `#` from.
+</Note>
+
+**Implementation**
+
+```scss
+@function to-string($value) {
+  @return inspect($value);
+}
+```

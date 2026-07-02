@@ -1,0 +1,86 @@
+---
+title: "Setup Gulp: Automate Your Shopify Front-End Pipeline"
+sidebarTitle: "Introduction"
+description: "Setup Gulp is a Gulp 4 build starter for Shopify themes. It compiles SCSS, transpiles TypeScript, optimises images, and live-reloads with BrowserSync."
+---
+
+Setup Gulp is an opinionated Gulp 4 build starter designed to automate the front-end development workflow for Shopify themes. Instead of manually compiling stylesheets, transpiling TypeScript, optimising images, and refreshing the browser on every change, Setup Gulp wires all of those tasks together into a single, coherent pipeline. Drop your source files into the `src/` directory, run one command, and Gulp takes care of the rest — outputting compiled, minified, production-ready assets directly into the `assets/` folder that Shopify expects.
+
+## Why Setup Gulp?
+
+Shopify themes require compiled, browser-ready CSS and JavaScript in a flat `assets/` directory. Managing that compilation manually is repetitive and error-prone. Setup Gulp solves the problem by giving you a preconfigured task runner with sensible defaults, so you can focus on building features rather than configuring tooling.
+
+<CardGroup cols={2}>
+  <Card title="Zero-configuration start" icon="rocket">
+    Clone, run `yarn`, and `yarn serve` — the entire pipeline is ready without writing a single line of Gulp configuration.
+  </Card>
+  <Card title="Shopify-native output" icon="store">
+    Compiled assets land in `assets/` with the flat structure and minified filenames Shopify themes require out of the box.
+  </Card>
+  <Card title="Component & section conventions" icon="puzzle-piece">
+    Files inside `components/` and `sections/` subdirectories are automatically prefixed (`component-`, `section-`) so they align with Shopify's template naming patterns.
+  </Card>
+  <Card title="Live reload included" icon="rotate">
+    BrowserSync watches `index.html` and streams CSS changes into the browser instantly, with no manual refresh needed during development.
+  </Card>
+  <Card title="Quality gates built in" icon="shield-check">
+    ESLint, Stylelint, Prettier, and Husky pre-commit hooks enforce consistent code style automatically before every commit.
+  </Card>
+  <Card title="Testing from day one" icon="flask">
+    Vitest is pre-configured with jsdom, globals, and V8 coverage so you can write and run unit tests without any additional setup.
+  </Card>
+</CardGroup>
+
+## Tech Stack
+
+Setup Gulp assembles a curated set of modern front-end tools, each pinned to a stable version in `package.json`:
+
+| Tool | Version | Role |
+|---|---|---|
+| **Gulp** | ^4.0.2 | Task runner and file-watch orchestrator |
+| **Sass / gulp-sass** | ^1.71.1 / ^5.1.0 | Compiles SCSS to CSS using the Dart Sass compiler |
+| **Bourbon** | ^7.3.0 | Lightweight SCSS utility library |
+| **Bourbon Neat** | ^4.0.0 | Semantic grid framework built on Bourbon |
+| **Autoprefixer / PostCSS** | ^10.4.17 / ^8.4.35 | Adds vendor prefixes and runs PostCSS transforms |
+| **gulp-clean-css** | ^4.3.0 | Minifies compiled CSS output |
+| **Babel** | ^7.24.3 | Transpiles modern JavaScript and TypeScript to ES5 |
+| **TypeScript** | ^5.4.3 | Adds static typing to all JavaScript source files |
+| **gulp-uglify** | ^3.0.2 | Minifies and obfuscates JavaScript output |
+| **BrowserSync** | ^3.0.2 | Serves the project locally and live-reloads on changes |
+| **ESLint** | ^8.0.1 | Lints TypeScript source files against Airbnb/Standard rules |
+| **Stylelint** | ^16.3.1 | Lints SCSS files against the standard SCSS config |
+| **Prettier** | ^3.2.5 | Enforces consistent code formatting across all file types |
+| **Husky + lint-staged** | ^9.0.11 / ^15.2.2 | Runs Stylelint automatically on staged SCSS files before each commit |
+| **Vitest** | ^1.5.0 | Fast unit test runner with jsdom environment and V8 coverage |
+
+## How It Works
+
+The pipeline follows a straightforward source-to-output flow. Every asset type goes through its own dedicated Gulp task before landing in `assets/`:
+
+```
+src/scss/**/*.scss
+  └─► Sass compile (Dart Sass + Bourbon/Neat include paths)
+      └─► PostCSS (Autoprefixer)
+          └─► src/css/*.css (intermediate)
+              └─► gulp-clean-css (minify + sourcemaps)
+                  └─► assets/*.min.css
+
+src/js/**/*.ts
+  └─► Babel (TypeScript → ES5 transpile)
+      └─► gulp-uglify (minify + sourcemaps)
+          └─► assets/*.min.js
+
+src/img/**/*.(png|jpg|gif|svg)
+  └─► gulp-imagemin (lossy/lossless optimisation)
+      └─► assets/
+
+src/fonts/**/*
+  └─► copy
+      └─► assets/
+```
+
+During development, `gulp watch` monitors every source path and re-runs only the relevant task when a file changes. BrowserSync then streams updated CSS directly into the browser or triggers a full reload for HTML and JavaScript changes — all without you touching the keyboard.
+
+<Note>
+  Setup Gulp is released under the **MIT License**, which means you are free to use, modify, and distribute it in personal and commercial Shopify projects without restriction.
+</Note>

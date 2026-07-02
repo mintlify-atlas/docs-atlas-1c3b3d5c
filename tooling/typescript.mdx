@@ -1,0 +1,112 @@
+---
+title: "TypeScript Configuration and Babel Compilation"
+sidebarTitle: "TypeScript"
+description: "How Setup Gulp uses TypeScript 5 with strict mode and compiles source files via Babel with @babel/preset-typescript for Shopify-compatible output."
+---
+
+Setup Gulp separates two distinct concerns of the TypeScript toolchain: type checking is handled by the TypeScript compiler (`tsc`) in isolation, while the actual transpilation to JavaScript is delegated to Babel. This split gives you the full safety of TypeScript's strict type system during development and CI while keeping the Gulp build pipeline fast and flexible through Babel's transform-based architecture.
+
+## tsconfig.json
+
+The TypeScript configuration is intentionally lean — it focuses on type-checking accuracy and test environment compatibility rather than on emit configuration, since Babel handles compilation:
+
+```json
+{
+  "compilerOptions": {
+    "target": "es2016",
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["vitest/globals"]
+  }
+}
+```
+
+Each active option serves a specific purpose:
+
+| Option | Effect |
+|---|---|
+| `target: "es2016"` | Output syntax compatible with modern browsers; supports `async/await`, `for...of`, and other ES2016+ constructs natively without heavy polyfills |
+| `module: "commonjs"` | Generates `require()`/`module.exports` module syntax, compatible with Node.js and the Gulp runtime |
+| `esModuleInterop: true` | Allows clean default imports from CommonJS packages (e.g. `import fs from 'fs'`) without the `* as` workaround |
+| `forceConsistentCasingInFileNames: true` | Prevents import path casing mismatches that compile successfully on case-insensitive filesystems (macOS) but fail on Linux CI |
+| `strict: true` | Enables the full suite of strict type-checking flags: `noImplicitAny`, `strictNullChecks`, `strictFunctionTypes`, and more |
+| `skipLibCheck: true` | Skips type checking of `.d.ts` declaration files in `node_modules`, significantly speeding up `tsc` in projects with many dependencies |
+| `types: ["vitest/globals"]` | Injects Vitest's global type declarations (`test`, `expect`, `describe`, etc.) into every file, matching the `globals: true` runtime setting in `vitest.config.ts` and eliminating the need for explicit imports in test files |
+
+## Babel compilation pipeline
+
+While `tsc` validates types, Babel is responsible for the actual source-to-JavaScript transformation in the Gulp build. This approach is common in projects that need custom transform pipelines or Gulp integration, because Babel operates on a file-by-file basis without needing a full type graph, making incremental builds faster.
+
+The Babel configuration uses four presets and plugins:
+
+<CardGroup cols={2}>
+  <Card title="@babel/preset-env" icon="layer-group">
+    Transpiles modern JavaScript syntax to the target browser environment defined in the `browserslist` field (`last 2 versions`).
+  </Card>
+  <Card title="@babel/preset-typescript" icon="code">
+    Strips TypeScript type annotations and syntax, converting `.ts` files to plain JavaScript without performing type checking.
+  </Card>
+  <Card title="@babel/plugin-transform-runtime" icon="arrows-rotate">
+    Replaces inline Babel helpers with imports from `@babel/runtime`, reducing output bundle size when the same helper is used across multiple files.
+  </Card>
+  <Card title="@babel/plugin-proposal-class-properties" icon="cubes">
+    Enables class field syntax (`class Foo { bar = 1 }`), which is used in component and section source files.
+  </Card>
+</CardGroup>
+
+Two scripts expose the compilation steps directly:
+
+```bash
+yarn build:compile   # npx babel src --extensions .ts --out-dir build --source-maps
+yarn build:types     # tsc (type check + emit declarations only)
+```
+
+`yarn build:compile` processes every `.ts` file under `src/` and writes the transpiled output — together with source maps — to the `build/` directory. `yarn build:types` runs `tsc` purely for type validation and declaration file generation, with no JavaScript emit overlapping the Babel output.
+
+## TypeScript in Gulp tasks
+
+The `gulp js`, `gulp jsComponents`, and `gulp jsSections` tasks form the main JavaScript build pipeline. Each task sources `.ts` files, pipes them through `gulp-babel`, and feeds the result to `gulp-uglify` for minification:
+
+<Steps>
+  <Step title="Source TypeScript files">
+    `gulp.src()` collects `.ts` files from the relevant directory (`src/js/`, `src/js/components/`, or `src/js/sections/`).
+  </Step>
+  <Step title="Transpile with gulp-babel">
+    `gulp-babel` invokes Babel on each file using the project's Babel config. `@babel/preset-typescript` strips all type annotations and converts TypeScript-specific syntax, while `@babel/preset-env` handles the remaining ES-to-ES5 downlevelling.
+  </Step>
+  <Step title="Minify with gulp-uglify">
+    The plain JavaScript output is passed to `gulp-uglify`, which removes whitespace, renames local variables, and produces production-ready minified bundles.
+  </Step>
+  <Step title="Write to assets">
+    The final minified file is written to the Shopify `assets/` directory, ready to be referenced from Liquid templates.
+  </Step>
+</Steps>
+
+## Type definitions
+
+The following `@types/*` packages are installed to provide TypeScript declarations for the project's runtime and build dependencies:
+
+```bash
+@types/node              # Node.js built-ins (fs, path, process, etc.)
+@types/gulp              # Gulp task and stream APIs
+@types/gulp-babel        # gulp-babel plugin typings
+@types/gulp-clean-css    # gulp-clean-css plugin typings
+@types/gulp-concat       # gulp-concat plugin typings
+@types/gulp-imagemin     # gulp-imagemin plugin typings
+@types/gulp-plumber      # gulp-plumber plugin typings
+@types/gulp-postcss      # gulp-postcss plugin typings
+@types/gulp-rename       # gulp-rename plugin typings
+@types/gulp-sass         # gulp-sass plugin typings
+@types/gulp-uglify       # gulp-uglify plugin typings
+@types/browser-sync      # BrowserSync server typings
+@types/merge-stream      # merge-stream utility typings
+```
+
+These packages ensure that all Gulp task code is fully type-safe and that editor tooling provides accurate autocompletion and inline documentation for every plugin API.
+
+<Tip>
+  Run `yarn build:types` any time you want to verify that your TypeScript types are correct without triggering a full Gulp build. It is significantly faster than a complete pipeline run and gives you the same diagnostic output as your editor's TypeScript language server.
+</Tip>

@@ -1,0 +1,121 @@
+---
+title: "Deploying Setup Gulp Assets to a Shopify Theme"
+sidebarTitle: "Shopify Integration"
+description: "Connect Setup Gulp's compiled assets/ output to a Shopify theme by pointing gulp's dest path at your theme directory and using Shopify CLI for live sync."
+---
+
+Setup Gulp's `assets/` output directory is designed to mirror the structure of a Shopify theme's `assets/` folder exactly. Every compiled stylesheet, minified script, font file, and optimised image lands in a flat directory with a consistent naming convention — matching the flat layout Shopify requires. This makes it straightforward to point `paths.dest` directly at a local theme checkout and have Shopify CLI pick up every change automatically.
+
+## Asset naming conventions
+
+Each output file follows a naming pattern that signals its role in the theme. This makes it easy to load only what each template or section needs, keeping page weight down.
+
+| Output file | Source | Shopify usage |
+|---|---|---|
+| `app.min.css` | `./src/scss/*.scss` | Global stylesheet, linked in `theme.liquid` |
+| `component-*.min.css` | `./src/scss/components/*.scss` | Component-scoped styles, linked conditionally per template |
+| `section-*.min.css` | `./src/scss/sections/*.scss` | Section-scoped styles, rendered inline or linked per section |
+| `component-*.min.js` | `./src/js/components/*.ts` | Reusable component scripts, loaded with `script_tag` or `<script defer>` |
+| `section-*.min.js` | `./src/js/sections/*.ts` | Section-specific scripts, loaded only on templates that use that section |
+
+Reference compiled assets in Liquid templates using the `asset_url` filter so Shopify's CDN serves them with the correct URL:
+
+```liquid
+{{ 'app.min.css' | asset_url | stylesheet_tag }}
+{{ 'component-loading-spinner.min.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'component-cart.min.js' | asset_url }}" defer></script>
+```
+
+Load component stylesheets conditionally inside the section or snippet that requires them so they are only requested on pages that actually render that component:
+
+```liquid
+{%- if section.settings.show_cart -%}
+  {{ 'component-cart.min.css' | asset_url | stylesheet_tag }}
+  <script src="{{ 'component-cart.min.js' | asset_url }}" defer></script>
+{%- endif -%}
+```
+
+## Pointing `dest` at your Shopify theme
+
+To compile and deploy assets directly into a local Shopify theme checkout, change the `dest` entry in the `paths` object to point at that theme's `assets/` directory:
+
+```js gulpfile.js
+const paths = {
+  // ...other paths...
+  dest: '../my-shopify-theme/assets'  // point to your theme's assets folder
+}
+```
+
+After saving the change, running `yarn build` compiles everything and writes the output straight into the theme folder. Running `yarn start` does the same and then enters watch mode, recompiling and copying on every source file save.
+
+Make sure the theme directory exists and contains a valid Shopify theme structure before running the build — `gulp-dest` will create the `assets/` sub-folder if it is missing, but will not create a theme scaffold from scratch.
+
+## Using with Shopify CLI
+
+The recommended development workflow runs Setup Gulp and the Shopify CLI dev server in two separate terminals. Gulp handles compilation; Shopify CLI handles syncing the compiled output to the development theme and serving it.
+
+<Steps>
+  <Step title="Start the Shopify CLI dev server">
+    In your theme directory, start the local development server. Shopify CLI will sync local file changes to a development theme on your store and serve a preview URL.
+
+    ```bash
+    shopify theme dev --store your-store.myshopify.com
+    ```
+  </Step>
+  <Step title="Start the Gulp watcher">
+    In a separate terminal, start the Gulp watcher from the Setup Gulp project directory.
+
+    ```bash
+    yarn start
+    ```
+  </Step>
+  <Step title="Edit source files">
+    Save any `.scss` or `.ts` file. Gulp detects the change, recompiles the file, and writes the minified output to `paths.dest` (your theme's `assets/` folder). Shopify CLI detects the new or updated file in the theme directory and syncs it to the development theme within seconds.
+  </Step>
+</Steps>
+
+This two-process setup keeps compilation concerns separate from deployment concerns. If you need to rebuild without syncing — for example, to verify output before pushing — run `yarn build` without starting `shopify theme dev`.
+
+## BrowserSync with Shopify CLI proxy
+
+By default, the `serve` task starts BrowserSync with its own static server. When working with Shopify CLI, replace this with a proxy that forwards requests to the Shopify CLI preview URL (`http://127.0.0.1:9292` by default). BrowserSync then injects its live-reload script into every page served by the Shopify preview, and CSS changes stream directly into the browser without a full reload.
+
+```js gulpfile.js
+gulp.task('serve', (done) => {
+  browserSync.init({
+    proxy: 'http://127.0.0.1:9292',  // Shopify CLI default port
+    snippetOptions: {
+      rule: {
+        match: /<\/body>/i,
+        fn: (snippet, match) => snippet + match,
+      },
+    },
+  })
+  done()
+})
+```
+
+The `snippetOptions` block ensures the BrowserSync script tag is injected just before `</body>` even when Shopify's server sets a `Content-Security-Policy` that might otherwise block inline scripts. If you have customised the Shopify CLI port with the `--port` flag, update the proxy URL to match.
+
+## Font and image references
+
+Fonts copied to `assets/` by the `fonts` task and images processed by the `images` task are available on Shopify's CDN alongside your stylesheets and scripts. Reference them in SCSS using the `asset_url` Liquid filter rather than relative paths — relative paths break once Shopify's CDN rewrites the stylesheet URL.
+
+Declare font faces inside a `.liquid` stylesheet (a `.css.liquid` file in the `assets/` directory) so the Liquid filter can resolve the URL at render time:
+
+```scss
+@font-face {
+  font-family: 'Roboto';
+  src: url('{{ "Raleway-Black.ttf" | asset_url }}') format('truetype');
+}
+```
+
+Inline SVGs placed directly in Liquid templates do not need the `asset_url` filter. For SVGs or images referenced in CSS `background-image` declarations, the same `asset_url` filter rule applies — put the declaration in a `.css.liquid` file and filter every asset reference.
+
+<Warning>
+  Shopify's CDN appends a content-hash version string to every asset filename when the theme is published. Relative paths in CSS (e.g. `url('../assets/Raleway-Black.ttf')`) will resolve correctly in local development but will break in production because the CDN-served stylesheet URL no longer shares a directory with the asset. Always use `| asset_url` in Liquid templates and `.css.liquid` files to ensure paths resolve correctly in every environment.
+</Warning>
+
+<Tip>
+  If you are not using a continuous integration pipeline, run `shopify theme push` from your theme directory to deploy all local changes — including the latest compiled assets — to your live theme in one command. Pair it with `yarn build` to ensure the assets are fully compiled and up to date before pushing.
+</Tip>

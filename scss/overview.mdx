@@ -1,0 +1,120 @@
+---
+title: "SCSS Architecture: Partials, Mixins, and Color System"
+sidebarTitle: "Overview"
+description: "How Setup Gulp organises SCSS source files into partials for colors, fonts, mixins, functions, and components ready for Shopify theme use."
+---
+
+Setup Gulp structures its styles as a set of focused SCSS partials that are composed together in a single entry file. Each partial has a single responsibility — color tokens, typography, utility functions, or cross-browser mixins — so the codebase stays easy to navigate and extend without coupling unrelated concerns.
+
+## File organisation
+
+| File | Role |
+|------|------|
+| `_colors.scss` | Defines every design token as a CSS custom property (e.g. `--gray-60`). Includes base hex colors and pre-computed `rgba()` opacity variants from 90 % down to 1.25 %. |
+| `_fonts.scss` | Declares `@font-face` rules and exports named Sass variables for each font stack (e.g. `$roboto-black`). |
+| `_functions.scss` | Three pure Sass utility functions: `hex-to-rgb()`, `str-replace()`, and `to-string()`. These support the color system and dynamic class generation in the mixin library. |
+| `_mixins.scss` | A comprehensive cross-browser mixin library covering flexbox, typography, layout, visual effects, transforms, animations, and user-interaction utilities. |
+| `_variables.scss` | Project-level Sass variables shared across partials (breakpoints, spacing scale, z-index map, etc.). |
+| `app.scss` | The main entry file. Imports every partial with `@use` and pulls in the Bourbon utility library with `@import`. |
+| `components/` | Component-scoped SCSS files, for example `loading-spinner.scss`. Each file styles one discrete UI component. |
+| `sections/` | Page-section SCSS files that correspond to Shopify theme sections. |
+
+## Import order in `app.scss`
+
+The order of `@use` and `@import` statements matters: partials that define variables or functions must be loaded before anything that consumes them.
+
+```scss
+@use './mixins' as mixins;
+@use './fonts' as fonts;
+@use './colors';
+
+@import 'bourbon';
+```
+
+`@use` is the modern Sass module system — it scopes the partial's members under a namespace (e.g. `mixins.flexbox`). `@import 'bourbon'` uses the legacy import path because Bourbon ships as a pre-built entry point that the Gulp Sass task resolves automatically (see [Bourbon integration](#bourbon-integration) below).
+
+After the imports, `app.scss` applies global resets and layout rules using the mixins and color variables defined in the partials:
+
+```scss
+* {
+  @include mixins.box-sizing(border-box);
+  @include padding(0);
+  @include margin(0);
+}
+
+body {
+  background-color: var(--gray-10);
+  @include mixins.flexbox;
+  @include mixins.flex-just(center);
+  overflow-x: hidden;
+}
+
+.container {
+  position: relative;
+  width: 60%;
+  @include margin(0 auto);
+}
+
+.base {
+  @include mixins.flexbox();
+  @include mixins.align-items(center);
+  @include mixins.border-radius(.5rem);
+  @include mixins.background-opacity(var(--white), 1);
+  @include mixins.box-shadow(0, 10px, 10px, -15px, var(--gray-60));
+  @include mixins.border('', thin, solid, var(--gray-30));
+}
+```
+
+## Bourbon integration
+
+[Bourbon](https://www.bourbon.io/) is a lightweight Sass mixin library. The Gulp `sass` task automatically injects Bourbon's `includePaths` when it initialises the Sass compiler, which means you can write `@import 'bourbon'` (or `@import 'bourbon-neat'`) anywhere in your SCSS without specifying a relative path. No manual `node_modules` path is needed.
+
+```js
+// gulp/tasks/sass.js (simplified)
+const sass = require('gulp-sass')(require('sass'));
+const bourbon = require('bourbon').includePaths;
+const neat   = require('bourbon-neat').includePaths;
+
+gulp.task('sass', () =>
+  gulp.src('src/scss/app.scss')
+    .pipe(sass({ includePaths: [...bourbon, ...neat] }))
+    .pipe(gulp.dest('dist/css'))
+);
+```
+
+Once the path is injected, every Bourbon mixin (e.g. `@include padding()`, `@include margin()`) is available globally in every file compiled through that task.
+
+## Component example
+
+The `components/loading-spinner.scss` file demonstrates the component pattern. It defines two `@keyframes` animations — `rotator` (full 270 ° rotation) and `dash` (stroke-dashoffset animation) — and applies them to `.loading__spinner`, `.spinner`, and `.path` selectors. The stroke color is driven by the CSS custom property `--color-foreground`, keeping the spinner theme-aware without any Sass variables.
+
+```scss
+@keyframes rotator {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(270deg); }
+}
+
+.spinner {
+  animation: rotator 1.4s linear infinite;
+}
+
+.path {
+  stroke-dasharray: 280;
+  stroke: rgb(var(--color-foreground));
+  animation: dash 1.4s ease-in-out infinite;
+}
+```
+
+## Further reading
+
+<CardGroup cols={3}>
+  <Card title="Mixins" icon="wand-magic-sparkles" href="/scss/mixins">
+    Full reference for every mixin in `_mixins.scss`
+  </Card>
+  <Card title="Colors" icon="palette" href="/scss/colors">
+    CSS custom property color tokens and opacity variants
+  </Card>
+  <Card title="Functions" icon="function" href="/scss/functions">
+    `hex-to-rgb`, `str-replace`, and `to-string` utility functions
+  </Card>
+</CardGroup>

@@ -1,0 +1,135 @@
+---
+title: "Testing with Vitest and jsdom"
+sidebarTitle: "Testing"
+description: "Run unit tests in Setup Gulp using Vitest with jsdom environment, coverage via v8, and the optional Vitest UI for interactive test exploration."
+---
+
+Setup Gulp uses [Vitest](https://vitest.dev/) as its test runner, paired with a `jsdom` environment so that tests can interact with browser-like DOM APIs without launching a real browser. Coverage is collected through the V8 provider and reported as text, JSON, and HTML. An optional browser-based UI is available for interactive test exploration during development.
+
+## Test runner: Vitest
+
+Vitest ^1.5.0 is configured with `globals: true` and `environment: 'jsdom'`, meaning the full set of Vitest globals (`test`, `expect`, `describe`, `beforeEach`, etc.) is available in every test file without explicit imports, and DOM APIs such as `document` and `window` are provided by jsdom.
+
+Test files live in the `__tests__/` directory at the project root and follow the `*.test.ts` naming convention. Three npm scripts cover the most common workflows:
+
+```bash
+yarn test          # vitest (interactive watch mode)
+yarn test:ui       # vitest --ui (browser-based interactive UI)
+yarn coverage      # vitest run --coverage (single run with coverage report)
+```
+
+## Vitest configuration
+
+The full configuration is defined in `vitest.config.ts` at the project root:
+
+```ts
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  test: {
+    exclude: ['**/node_modules/**', '**/assets/**', './gulpfile.js'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'coverage/**',
+        '**/__tests__/**',
+        '**/assets/**',
+        './gulpfile.js'
+      ]
+    },
+    environment: 'jsdom',
+    globals: true
+  },
+})
+```
+
+Key options explained:
+
+<Accordion title="environment: 'jsdom'">
+  Provides a simulated browser environment for every test file. DOM APIs such as `document.querySelector`, `window`, and `localStorage` are available without any additional setup. This is particularly useful for tests that verify DOM structure or browser-facing utilities.
+</Accordion>
+
+<Accordion title="globals: true">
+  Makes `test()`, `expect()`, `describe()`, `beforeEach()`, and all other Vitest globals available without an explicit `import` statement at the top of each test file. This keeps test files concise and matches the Jest authoring style.
+</Accordion>
+
+<Accordion title="gulpfile.js exclusion">
+  `gulpfile.js` uses ESM `import` syntax and Gulp-specific APIs that are incompatible with the Vitest/Node.js test runner. Excluding it from both `test.exclude` and `coverage.exclude` prevents false failures and keeps coverage metrics focused on the actual application source.
+</Accordion>
+
+<Accordion title="coverage.provider: 'v8'">
+  Uses Node.js's built-in V8 coverage engine via `@vitest/coverage-v8`. V8 coverage is faster than instrumentation-based alternatives and requires no Babel transforms, making it a natural fit for a TypeScript project that already uses Babel for compilation.
+</Accordion>
+
+## Included test examples
+
+The project ships with two test files that serve as practical starting points.
+
+### sum.test.ts — unit testing a utility function
+
+`__tests__/sum.test.ts` imports and exercises the `sum()` helper from `src/js/sum.ts`, demonstrating typed assertions in a minimal unit test:
+
+```ts title="src/js/sum.ts"
+export const sum = (a: number, b: number): number => {
+  return a + b;
+};
+```
+
+```ts title="__tests__/sum.test.ts"
+import { sum } from '../src/js/sum';
+
+test('adds 1 + 2 to equal 3', () => {
+  const result: number = sum(1, 2);
+  const expected: number = 3;
+  expect(result).toBe(expected);
+});
+```
+
+This test imports a named export, runs a computation, and asserts the result with `toBe`. The explicit type annotations on `result` and `expected` mean TypeScript will catch any future signature changes at compile time before the test even runs.
+
+### sass.test.ts — file system integrity test
+
+`__tests__/sass.test.ts` verifies that every required SCSS partial exists on disk before the build starts, catching missing files early rather than at Gulp task execution time:
+
+```ts title="__tests__/sass.test.ts"
+import fs from 'fs';
+import path from 'path';
+
+test('valida la existencia de archivos en la carpeta scss', () => {
+  const scssDirectory = './src/scss';
+  const filesToCheck = [
+    '_colors.scss', '_fonts.scss', '_mixins.scss',
+    '_functions.scss', '_variables.scss'
+  ];
+  filesToCheck.forEach((file) => {
+    const filePath = path.join(scssDirectory, file);
+    expect(fs.existsSync(filePath)).toBe(true);
+  });
+});
+```
+
+This pattern is useful for asserting structural project conventions — if a required partial is accidentally deleted or renamed, the test suite fails with a clear message rather than producing a silent build error.
+
+## Writing new tests
+
+Follow these conventions when adding test files to the project:
+
+<Steps>
+  <Step title="Place test files in __tests__/">
+    All test files should live in the `__tests__/` directory at the project root. Vitest will discover them automatically based on its default `include` glob.
+  </Step>
+  <Step title="Use the *.test.ts naming convention">
+    Name every test file with a `.test.ts` extension. This makes the purpose of the file immediately obvious and ensures Vitest picks it up without any additional configuration.
+  </Step>
+  <Step title="Import from src/ using relative paths">
+    Reference source files using relative paths from `__tests__/` to `src/`. For example, a utility at `src/js/utils.ts` is imported as `import { myUtil } from '../src/js/utils'`.
+  </Step>
+  <Step title="Omit Vitest imports">
+    Because `globals: true` is set in `vitest.config.ts`, you do not need to import `test`, `expect`, `describe`, or lifecycle hooks. Simply use them directly, as shown in the existing test examples.
+  </Step>
+</Steps>
+
+<Note>
+  Coverage reports are written to the `coverage/` directory in three formats after running `yarn coverage`: a **text** summary printed to the terminal, a **JSON** file for programmatic consumption or CI integration, and an **HTML** report you can open in a browser for a line-by-line breakdown. The `coverage/` directory is excluded from coverage measurement itself to avoid skewed metrics.
+</Note>

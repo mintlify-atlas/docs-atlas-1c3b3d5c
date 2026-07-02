@@ -1,0 +1,110 @@
+---
+title: "Gulp Task Reference: All Available Build Tasks"
+sidebarTitle: "Overview"
+description: "Complete reference for every Gulp task in Setup Gulp — styles, scripts, images, fonts, watch mode, build, and the dev server task."
+---
+
+Setup Gulp's `gulpfile.js` is organised around a set of focused, composable Gulp 4 tasks. Each task handles one concern — compiling SCSS, transpiling TypeScript, optimising images, and so on — and the top-level `build`, `watch`, and `serve` tasks wire them together. All tasks are defined with `gulp.task()` and can be run individually with the `gulp <taskName>` command, or via the `yarn` script aliases defined in `package.json`.
+
+## All Tasks at a Glance
+
+| Task | Run with | Purpose |
+|------|----------|---------|
+| `serve` | `yarn serve` | Starts a BrowserSync dev server rooted at `./` |
+| `watch` | `yarn start` | Watches all `src/` files and recompiles on change |
+| `build` | `yarn build` | Full parallel production build |
+| `cleanAssets` | `yarn clean` | Deletes `assets/` and `src/css/` contents |
+| `sass` | `gulp sass` | Compiles root SCSS + merges `normalize.css` |
+| `sassComponents` | `gulp sassComponents` | Compiles component SCSS with `component-` prefix |
+| `sassSections` | `gulp sassSections` | Compiles section SCSS with `section-` prefix |
+| `minifyCss` | `gulp minifyCss` | Minifies compiled CSS and outputs to `assets/` |
+| `lintScss` | `gulp lintScss` | Lints SCSS files with gulp-sass-lint |
+| `js` | `gulp js` | Transpiles and minifies root TypeScript files |
+| `jsComponents` | `gulp jsComponents` | Transpiles component TypeScript with `component-` prefix |
+| `jsSections` | `gulp jsSections` | Transpiles section TypeScript with `section-` prefix |
+| `lintJs` | `gulp lintJs` | Lints TypeScript files with gulp-eslint |
+| `fonts` | `gulp fonts` | Copies fonts from `src/fonts/` to `assets/` |
+| `images` | `gulp images` | Optimises images and outputs to `assets/` |
+
+---
+
+## The `watch` Task
+
+The `watch` task sets up persistent file watchers across every source directory. When a file changes, only the relevant task is triggered — keeping rebuilds fast and incremental.
+
+```js
+gulp.task('watch', () => {
+  gulp.watch(paths.font,           gulp.series('fonts'))
+  gulp.watch(paths.img,            gulp.series('images'))
+  gulp.watch(paths.jsComponents,   gulp.series('jsComponents'))
+  gulp.watch(paths.jsSections,     gulp.series('jsSections'))
+  gulp.watch(paths.js,             gulp.series('js'))
+  gulp.watch(paths.sassComponents, gulp.series('sassComponents'))
+  gulp.watch(paths.sassSections,   gulp.series('sassSections'))
+  gulp.watch(paths.sass,           gulp.series('sass'))
+  gulp.watch(paths.css,            gulp.series('minifyCss'))
+  browserSync.stream()
+})
+```
+
+The glob-to-task mapping is:
+
+| Glob | Task triggered |
+|------|---------------|
+| `./src/fonts/**/*` | `fonts` |
+| `./src/img/**/*.+(png\|jpg\|jpeg\|gif\|svg)` | `images` |
+| `./src/js/components/*.ts` | `jsComponents` |
+| `./src/js/sections/*.ts` | `jsSections` |
+| `./src/js/*.ts` | `js` |
+| `./src/scss/components/*.scss` | `sassComponents` |
+| `./src/scss/sections/*.scss` | `sassSections` |
+| `./src/scss/*.scss` | `sass` |
+| `./src/css/*.css` | `minifyCss` |
+
+Run the watcher with:
+
+```bash
+yarn start
+```
+
+---
+
+## The `build` Task
+
+The `build` task runs all compilation, optimisation, and copy tasks in parallel using `gulp.parallel()`. It is the standard entry point for producing a fully compiled set of output files in `assets/`.
+
+```js
+gulp.task(
+  'build',
+  gulp.parallel(
+    'cleanAssets',
+    'fonts',
+    'images',
+    'jsComponents',
+    'jsSections',
+    'js',
+    'sassComponents',
+    'sassSections',
+    'sass',
+    'minifyCss'
+  )
+)
+```
+
+The `default` task is an alias that runs `build` in series:
+
+```js
+gulp.task('default', gulp.series('build'))
+```
+
+Run a full build with:
+
+```bash
+yarn build
+```
+
+---
+
+<Note>
+  Every task pipes its source through `gulp-plumber`, which catches stream errors and passes them to the `handleErrors` function. When a task fails, `gulp-notify` displays a desktop notification with the error message and `gulp-util` emits an audible beep. The process then exits with a non-zero code so CI pipelines register the failure correctly.
+</Note>

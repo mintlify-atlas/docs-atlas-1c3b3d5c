@@ -1,0 +1,156 @@
+---
+title: "Configuring Gulp Paths, Tasks, and Build Behaviour"
+sidebarTitle: "Gulp Config"
+description: "Customise the paths object, add new Gulp tasks, adjust image quality settings, and configure BrowserSync in Setup Gulp's gulpfile.js."
+---
+
+`gulpfile.js` is the central configuration file for the entire Setup Gulp build pipeline. Every source glob, output destination, task definition, and plugin option lives here. Understanding its structure lets you adapt the project to any asset layout, extend it with custom tasks, and fine-tune how aggressively files are optimised before they reach the browser.
+
+## The `paths` object
+
+The `paths` object is the single authoritative place for all source globs and output directories. Updating a value here propagates to every task that references it — you never need to hunt through individual task definitions.
+
+```js gulpfile.js
+const paths = {
+  sassComponents: './src/scss/components/*.scss',
+  sassSections: './src/scss/sections/*.scss',
+  sass: './src/scss/*.scss',
+  css: './src/css/*.css',
+  jsComponents: './src/js/components/*.ts',
+  jsSections: './src/js/sections/*.ts',
+  js: './src/js/*.ts',
+  font: './src/fonts/**/*',
+  img: './src/img/**/*.+(png|jpg|jpeg|gif|svg)',
+  dest: './assets',
+  root: './index.html'
+}
+```
+
+| Key | Default glob | What to change it to |
+|---|---|---|
+| `sassComponents` | `./src/scss/components/*.scss` | Any directory that holds per-component stylesheet partials |
+| `sassSections` | `./src/scss/sections/*.scss` | Any directory that holds per-section stylesheet partials |
+| `sass` | `./src/scss/*.scss` | The root SCSS entry files that import partials |
+| `css` | `./src/css/*.css` | The intermediate compiled CSS folder — rarely changed |
+| `jsComponents` | `./src/js/components/*.ts` | Per-component TypeScript source files |
+| `jsSections` | `./src/js/sections/*.ts` | Per-section TypeScript source files |
+| `js` | `./src/js/*.ts` | Root-level TypeScript entry files |
+| `font` | `./src/fonts/**/*` | Any font format directory; the `**/*` glob picks up all sub-folders |
+| `img` | `./src/img/**/*.+(png\|jpg\|jpeg\|gif\|svg)` | Extend the extension list (e.g. add `webp`) or point to a different source folder |
+| `dest` | `./assets` | Change to a Shopify theme directory such as `../my-theme/assets` to deploy directly |
+| `root` | `./index.html` | The HTML entry point watched for full-page reloads by BrowserSync |
+
+## BrowserSync configuration
+
+BrowserSync is initialised inside the `serve` task and handles live reloading during development.
+
+```js gulpfile.js
+gulp.task('serve', (done) => {
+  browserSync.init({
+    server: { baseDir: './' },
+  })
+  gulp.watch(paths.root).on('change', browserSync.reload)
+  done()
+})
+```
+
+- **`baseDir: './'`** — serves the project from the repository root so `index.html` is reachable at `http://localhost:3000`.
+- **`paths.root` watch** — triggers a full page reload whenever `index.html` changes.
+- **CSS streaming** — Sass and CSS tasks pipe through `browserSync.stream()` at the end of the pipeline, injecting updated styles directly into the browser without a full reload.
+
+If you are working against an existing server — such as the Shopify CLI development server — replace the `server` option with a `proxy`:
+
+```js gulpfile.js
+browserSync.init({
+  proxy: 'localhost:9292' // for Shopify CLI local dev
+})
+```
+
+This tells BrowserSync to forward all requests to the existing server while still injecting its live-reload script, giving you hot CSS updates on top of whatever server is already running.
+
+## Image optimisation settings
+
+The `images` task pipes every matched file through `gulp-imagemin` with per-format plugins. Each plugin exposes options you can tune to balance file size against processing time and visual quality.
+
+```js gulpfile.js
+gulp.task('images', () =>
+  gulp.src(paths.img)
+    .pipe(plumber({ errorHandler: handleErrors }))
+    .pipe(imagemin([
+      mozjpeg({ quality: 75, progressive: true }),
+      optipng({ optimizationLevel: 5 }),
+      gifsicle({ interlaced: true }),
+      svgo({
+        plugins: [
+          { name: 'removeViewBox', active: true },
+          { name: 'cleanupIDs', active: false },
+        ],
+      }),
+    ]))
+    .pipe(gulp.dest(paths.dest))
+)
+```
+
+**`mozjpeg`**
+- `quality` (0–100) — lower values produce smaller files with more visible compression artefacts. `75` is a good default for web; drop to `60` for thumbnails.
+- `progressive: true` — encodes the JPEG in progressive scans so the browser can render a blurry preview before the full image loads.
+
+**`optipng`**
+- `optimizationLevel` (0–7) — higher levels apply more aggressive deflate strategies. Level `5` balances speed and size well; use `7` in a CI pipeline where build time is less important.
+
+**`gifsicle`**
+- `interlaced: true` — encodes the GIF so browsers can display a coarse version while the rest of the file downloads, matching the progressive behaviour of JPEG.
+
+**`svgo`**
+- `removeViewBox: true` — strips the `viewBox` attribute from SVGs whose dimensions are set on the element itself. Disable this if your SVGs need to scale responsively.
+- `cleanupIDs: false` — leave internal IDs intact. Enabling this can break SVGs that use `<use>` references or CSS selectors targeting specific IDs.
+
+## Adding a new task
+
+Adding a task involves three steps: defining the task function, registering a watcher so it runs on file changes during development, and including it in the `build` task so it runs during production builds.
+
+```js gulpfile.js
+// 1. Define the task
+gulp.task('myTask', () =>
+  gulp.src('./src/custom/**/*.js')
+    .pipe(plumber({ errorHandler: handleErrors }))
+    // ...transforms...
+    .pipe(gulp.dest(paths.dest))
+)
+
+// 2. Add to watch
+gulp.watch('./src/custom/**/*.js', gulp.series('myTask'))
+
+// 3. Add to build
+gulp.task('build', gulp.parallel(
+  // ...existing tasks...
+  'myTask'
+))
+```
+
+Place step 1 anywhere in the file before the `watch` and `build` task definitions. The `plumber` call ensures the watcher keeps running even if the task throws an error — without it, a syntax mistake in a source file would kill the entire process.
+
+## Browserslist
+
+The `browserslist` field in `package.json` controls which browsers Autoprefixer and Babel's `@babel/preset-env` target when adding vendor prefixes and transpiling modern JavaScript syntax.
+
+```json package.json
+"browserslist": ["last 2 versions"]
+```
+
+`"last 2 versions"` targets the two most recent releases of every major browser, which covers the vast majority of users while keeping the CSS and JS output lean. You can be more specific when your audience requires it:
+
+```json package.json
+"browserslist": [
+  "last 2 Chrome versions",
+  "last 2 Firefox versions",
+  "last 2 Safari versions",
+  "> 1%"
+]
+```
+
+Run `npx browserslist` in the project root at any time to see the exact list of browsers the current query resolves to.
+
+<Note>
+  `gulpfile.js` is written with ES module syntax (`import`/`export`). The `"type": "module"` field must remain present in `package.json` — removing it will cause Node.js to treat the file as CommonJS and throw a syntax error on the first `import` statement.
+</Note>
